@@ -905,6 +905,24 @@ function showToast(msg) {
 // ── Init ──────────────────────────────────────────────────────────
 document.getElementById('todayDate').textContent = new Date().toLocaleDateString('en-US', { weekday:'long', month:'short', day:'numeric' });
 selectDay('A');
+
+// Register service worker for PWA caching
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/gym-log/sw.js')
+      .then(reg => {
+        // Auto-update: when a new SW is waiting, activate it
+        reg.addEventListener('updatefound', () => {
+          const newWorker = reg.installing;
+          newWorker.addEventListener('statechange', () => {
+            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+              newWorker.postMessage({ type: 'SKIP_WAITING' });
+            }
+          });
+        });
+      });
+  });
+}
 </script>
 </body>
 </html>
