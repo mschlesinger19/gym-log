@@ -1,8 +1,8 @@
-const CACHE_NAME = 'gym-log-v2';
+const CACHE_NAME = 'gym-log-v3';
 const ASSETS = [
-  '/',
-  '/index.html',
-  '/icon.png',
+  './',
+  './index.html',
+  './icon.png',
   'https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,300&display=swap',
   'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js'
 ];
@@ -29,13 +29,28 @@ self.addEventListener('activate', e => {
   self.clients.claim();
 });
 
-// Fetch — network first for Supabase, cache first for everything else
+// Fetch — network first for Supabase and page loads, cache first for static assets
 self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
 
   // Always go network for Supabase API calls
   if (url.hostname.includes('supabase.co')) {
     e.respondWith(fetch(e.request));
+    return;
+  }
+
+  // Network first for page navigations so app updates show up immediately,
+  // falling back to cache when offline
+  if (e.request.mode === 'navigate') {
+    e.respondWith(
+      fetch(e.request).then(res => {
+        if (res.ok) {
+          const copy = res.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put(e.request, copy));
+        }
+        return res;
+      }).catch(() => caches.match(e.request).then(cached => cached || caches.match('./index.html')))
+    );
     return;
   }
 
