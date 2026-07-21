@@ -218,6 +218,7 @@
   .badge-a { background: #2a1f00; color: var(--accent); border: 1px solid var(--accent); }
   .badge-b { background: #001f2a; color: var(--accent2); border: 1px solid var(--accent2); }
   .badge-c { background: #2a0000; color: var(--red); border: 1px solid var(--red); }
+  .badge-d { background: #0a1f0a; color: #42f57e; border: 1px solid #42f57e; }
   .history-body { display: none; padding: 12px 16px; }
   .history-body.open { display: block; }
   .history-ex { margin-bottom: 12px; }
@@ -294,6 +295,7 @@
     <div class="day-pill active" onclick="selectDay('A')" id="pill-A">Day A — Push</div>
     <div class="day-pill" onclick="selectDay('B')" id="pill-B">Day B — Pull</div>
     <div class="day-pill" onclick="selectDay('C')" id="pill-C">Day C — Power</div>
+    <div class="day-pill" onclick="selectDay('D')" id="pill-D">Day D — Core</div>
   </div>
   <div class="week-indicator" id="weekIndicator">
     <div>
@@ -401,6 +403,22 @@ const DAYS = {
         { name: 'Farmer / Suitcase Carry', target: '3 × 20yd', type: 'Finisher', sets: 3 },
       ]
     }
+  },
+  D: {
+    label: 'Day D — Core',
+    exercises: [
+      // Circuit 1
+      { name: 'Dead Bugs',          target: '2–3 × 10/side', type: 'Circuit 1', sets: 3, inputType: 'per_side' },
+      { name: 'Forearm Plank',      target: '2–3 × 30–45s',  type: 'Circuit 1', sets: 3, inputType: 'timed' },
+      { name: 'Bird Dogs',          target: '2–3 × 8/side',  type: 'Circuit 1', sets: 3, inputType: 'per_side' },
+      // Circuit 2
+      { name: 'Hollow Body Hold',   target: '2–3 × 20–30s',  type: 'Circuit 2', sets: 3, inputType: 'timed' },
+      { name: 'Side Plank',         target: '2–3 × 30s/side',type: 'Circuit 2', sets: 3, inputType: 'timed_per_side' },
+      { name: 'Russian Twists',     target: '2–3 × 15/side', type: 'Circuit 2', sets: 3, inputType: 'per_side' },
+      // Optional loaded
+      { name: 'Pallof Press',       target: '2–3 × 10/side', type: 'Optional', sets: 3, inputType: 'per_side' },
+      { name: 'Decline Sit-Ups',    target: '2–3 × 12',      type: 'Optional', sets: 3, inputType: 'weight_reps' },
+    ]
   }
 };
 
@@ -486,13 +504,17 @@ async function getSuggestedWeight(exName, lastSession) {
 
 // ── Program Helpers ───────────────────────────────────────────────
 function getExercises(day) {
-  if (day !== 'C') return DAYS[day].exercises;
-  return DAYS.C.exercises[currentWeek];
+  if (day === 'C') return DAYS.C.exercises[currentWeek];
+  return DAYS[day].exercises;
 }
 
-function getState(exName, sets) {
+function getState(exName, sets, inputType) {
   if (!logState[exName]) {
-    logState[exName] = { sets: Array.from({length: sets}, () => ({ weight: '', reps: '', done: false })), note: '' };
+    const blankSet = inputType === 'timed' ? { duration: '', done: false }
+      : inputType === 'per_side' ? { reps: '', done: false }
+      : inputType === 'timed_per_side' ? { duration: '', done: false }
+      : { weight: '', reps: '', done: false };
+    logState[exName] = { sets: Array.from({length: sets}, () => ({...blankSet})), note: '' };
   }
   return logState[exName];
 }
@@ -525,7 +547,9 @@ async function renderExercises() {
   area.innerHTML = '';
 
   exercises.forEach((ex, exIdx) => {
-    const state = getState(ex.name, ex.sets);
+    const inputType = ex.inputType || 'weight_reps';
+    const isCore = inputType !== 'weight_reps';
+    const state = getState(ex.name, ex.sets, inputType);
     const last = lastSessions[exIdx];
     const suggested = suggestions[exIdx];
     const equip = getEquip(ex.name);
@@ -537,14 +561,21 @@ async function renderExercises() {
 
     // Last session hint
     let lastHint = '';
-    if (last) {
+    if (last && !isCore) {
       const summary = last.sets.filter(s => s.weight).map(s => `${s.weight}lb×${s.reps||'?'}`).join(', ');
+      if (summary) lastHint = `<div class="last-session">Last: ${summary}</div>`;
+    } else if (last && isCore) {
+      const summary = last.sets.map(s => {
+        if (s.duration) return `${s.duration}s`;
+        if (s.reps) return `${s.reps}/side`;
+        return null;
+      }).filter(Boolean).join(', ');
       if (summary) lastHint = `<div class="last-session">Last: ${summary}</div>`;
     }
 
-    // Suggestion bar
+    // Suggestion bar (weight-based lifts only)
     let suggBar = '';
-    if (suggested !== null) {
+    if (suggested !== null && !isCore) {
       const isModerate = !!HEAVY_TO_MODERATE[ex.name];
       const label = isModerate
         ? `Moderate target (70%): <span>${suggested} lb</span>`
@@ -554,9 +585,9 @@ async function renderExercises() {
       suggBar = `<div class="suggestion-bar"><div class="suggestion-text">${label}</div></div>`;
     }
 
-    // Plate calc (barbell only, when suggestion exists)
+    // Plate calc (barbell only, non-core)
     let plateSection = '';
-    if (isBarbell && suggested !== null) {
+    if (isBarbell && suggested !== null && !isCore) {
       const plates = calcPlates(suggested);
       plateSection = `<div class="plate-calc">
         <div class="plate-calc-label">Plates per side (suggested)</div>
@@ -564,34 +595,88 @@ async function renderExercises() {
       </div>`;
     }
 
-    // Equipment toggle
-    const equipToggle = `<div class="equip-toggle">
+    // Equipment toggle (non-core only)
+    const equipToggle = isCore ? '' : `<div class="equip-toggle">
       <button class="equip-btn ${isBarbell ? 'active' : ''}" onclick="setEquip('${ex.name}', 'barbell')">🏋️ Barbell</button>
       <button class="equip-btn ${!isBarbell ? 'active' : ''}" onclick="setEquip('${ex.name}', 'dumbbell')">💪 Dumbbell</button>
     </div>`;
 
-    // Sets
-    let setsHTML = `<div class="set-rows">
-      <div class="set-labels">
-        <div class="set-label"></div>
-        <div class="set-label">Weight (lb)</div>
-        <div class="set-label">Reps</div>
-        <div class="set-label"></div>
-      </div>`;
+    // Sets — render based on inputType
+    let setsHTML = '';
+    if (inputType === 'timed') {
+      setsHTML = `<div class="set-rows">
+        <div class="set-labels">
+          <div class="set-label"></div>
+          <div class="set-label" style="grid-column:span 2">Duration (sec)</div>
+          <div class="set-label"></div>
+        </div>`;
+      state.sets.forEach((s, i) => {
+        const lastDur = last?.sets[i]?.duration || '';
+        setsHTML += `<div class="set-row">
+          <div class="set-num">${i+1}</div>
+          <input class="set-input" type="number" inputmode="numeric" placeholder="${lastDur || 'sec'}"
+            value="${s.duration||''}" onchange="updateSet('${ex.name}', ${i}, 'duration', this.value)"
+            style="grid-column:span 2" />
+          <button class="set-check ${s.done ? 'done' : ''}" onclick="toggleDone('${ex.name}', ${i}, this)">${s.done ? '✓' : ''}</button>
+        </div>`;
+      });
+    } else if (inputType === 'timed_per_side') {
+      setsHTML = `<div class="set-rows">
+        <div class="set-labels">
+          <div class="set-label"></div>
+          <div class="set-label" style="grid-column:span 2">Duration/side (sec)</div>
+          <div class="set-label"></div>
+        </div>`;
+      state.sets.forEach((s, i) => {
+        const lastDur = last?.sets[i]?.duration || '';
+        setsHTML += `<div class="set-row">
+          <div class="set-num">${i+1}</div>
+          <input class="set-input" type="number" inputmode="numeric" placeholder="${lastDur || 'sec'}"
+            value="${s.duration||''}" onchange="updateSet('${ex.name}', ${i}, 'duration', this.value)"
+            style="grid-column:span 2" />
+          <button class="set-check ${s.done ? 'done' : ''}" onclick="toggleDone('${ex.name}', ${i}, this)">${s.done ? '✓' : ''}</button>
+        </div>`;
+      });
+    } else if (inputType === 'per_side') {
+      setsHTML = `<div class="set-rows">
+        <div class="set-labels">
+          <div class="set-label"></div>
+          <div class="set-label" style="grid-column:span 2">Reps / side</div>
+          <div class="set-label"></div>
+        </div>`;
+      state.sets.forEach((s, i) => {
+        const lastReps = last?.sets[i]?.reps || '';
+        setsHTML += `<div class="set-row">
+          <div class="set-num">${i+1}</div>
+          <input class="set-input" type="number" inputmode="numeric" placeholder="${lastReps || 'reps'}"
+            value="${s.reps||''}" onchange="updateSet('${ex.name}', ${i}, 'reps', this.value)"
+            style="grid-column:span 2" />
+          <button class="set-check ${s.done ? 'done' : ''}" onclick="toggleDone('${ex.name}', ${i}, this)">${s.done ? '✓' : ''}</button>
+        </div>`;
+      });
+    } else {
+      // Standard weight × reps
+      setsHTML = `<div class="set-rows">
+        <div class="set-labels">
+          <div class="set-label"></div>
+          <div class="set-label">Weight (lb)</div>
+          <div class="set-label">Reps</div>
+          <div class="set-label"></div>
+        </div>`;
+      state.sets.forEach((s, i) => {
+        const ph = suggested !== null ? `${suggested}` : (last && last.sets[i]?.weight ? `${last.sets[i].weight}` : 'lbs');
+        setsHTML += `<div class="set-row">
+          <div class="set-num">${i+1}</div>
+          <input class="set-input" type="number" inputmode="decimal" placeholder="${ph}"
+            value="${s.weight}" onchange="updateSet('${ex.name}', ${i}, 'weight', this.value);updatePlateDisplay('${ex.name}')" />
+          <input class="set-input" type="number" inputmode="numeric" placeholder="reps"
+            value="${s.reps}" onchange="updateSet('${ex.name}', ${i}, 'reps', this.value)" />
+          <button class="set-check ${s.done ? 'done' : ''}" onclick="toggleDone('${ex.name}', ${i}, this)">${s.done ? '✓' : ''}</button>
+        </div>`;
+      });
+    }
 
-    state.sets.forEach((s, i) => {
-      const ph = suggested !== null ? `${suggested}` : (last && last.sets[i]?.weight ? `${last.sets[i].weight}` : 'lbs');
-      setsHTML += `<div class="set-row">
-        <div class="set-num">${i+1}</div>
-        <input class="set-input" type="number" inputmode="decimal" placeholder="${ph}"
-          value="${s.weight}" onchange="updateSet('${ex.name}', ${i}, 'weight', this.value);updatePlateDisplay('${ex.name}')" />
-        <input class="set-input" type="number" inputmode="numeric" placeholder="reps"
-          value="${s.reps}" onchange="updateSet('${ex.name}', ${i}, 'reps', this.value)" />
-        <button class="set-check ${s.done ? 'done' : ''}" onclick="toggleDone('${ex.name}', ${i}, this)">${s.done ? '✓' : ''}</button>
-      </div>`;
-    });
-
-    setsHTML += `</div><button class="add-set-btn" onclick="addSet('${ex.name}')">+ Add Set</button>`;
+    setsHTML += `</div><button class="add-set-btn" onclick="addSet('${ex.name}', '${inputType}')">+ Add Set</button>`;
 
     card.innerHTML = `
       <div class="ex-card-header">
@@ -636,8 +721,12 @@ function toggleDone(exName, idx, btn) {
   btn.textContent = logState[exName].sets[idx].done ? '✓' : '';
 }
 
-function addSet(exName) {
-  logState[exName].sets.push({ weight: '', reps: '', done: false });
+function addSet(exName, inputType) {
+  const blankSet = inputType === 'timed' ? { duration: '', done: false }
+    : inputType === 'per_side' ? { reps: '', done: false }
+    : inputType === 'timed_per_side' ? { duration: '', done: false }
+    : { weight: '', reps: '', done: false };
+  logState[exName].sets.push({...blankSet});
   renderExercises();
 }
 
@@ -666,7 +755,7 @@ async function saveWorkout() {
   exercises.forEach(ex => {
     const state = logState[ex.name];
     if (!state) return;
-    if (!state.sets.some(s => s.weight || s.reps)) return;
+    if (!state.sets.some(s => s.weight || s.reps || s.duration)) return;
     saved.push({ name: ex.name, sets: state.sets, note: state.note, equip: getEquip(ex.name) });
   });
   if (!saved.length) { showToast('Log at least one set first'); return; }
@@ -757,8 +846,10 @@ async function renderHistory() {
 
     const exHTML = entry.exercises.map(ex => {
       const setsHTML = ex.sets.map((s,i) => {
-        if (!s.weight && !s.reps) return '';
-        const label = [s.weight ? `${s.weight}lb` : '', s.reps ? `×${s.reps}` : ''].filter(Boolean).join(' ');
+        let label = '';
+        if (s.duration) label = `${s.duration}s`;
+        else if (s.weight || s.reps) label = [s.weight ? `${s.weight}lb` : '', s.reps ? `×${s.reps}` : ''].filter(Boolean).join(' ');
+        if (!label) return '';
         return `<div class="history-set-chip ${s.done ? 'done' : ''}">${i+1}. ${label}</div>`;
       }).join('');
       return `<div class="history-ex">
