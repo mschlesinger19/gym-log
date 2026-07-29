@@ -44,7 +44,9 @@
     display: flex; align-items: center; justify-content: space-between;
   }
   .top-nav h1 { font-family: 'Bebas Neue', sans-serif; font-size: 1.6rem; letter-spacing: 0.06em; color: var(--accent); }
-  .top-nav .date { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+  .top-nav .nav-right { display: flex; align-items: center; gap: 12px; }
+  .top-nav .date { font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+  .gear-btn { background: none; border: 1px solid var(--border); color: var(--accent); border-radius: 8px; font-size: 1rem; padding: 4px 10px; cursor: pointer; }
 
   .tab-bar {
     position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
@@ -66,20 +68,22 @@
   .screen { display: none; padding: 16px 16px 0; }
   .screen.active { display: block; }
 
-  .day-selector {
-    display: flex; gap: 8px; margin-bottom: 10px;
-    overflow-x: auto; padding-bottom: 4px; scrollbar-width: none;
+  .day-selector, .week-selector {
+    display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding-bottom: 4px;
   }
-  .day-selector::-webkit-scrollbar { display: none; }
-  .day-pill {
+  .day-selector::-webkit-scrollbar, .week-selector::-webkit-scrollbar { display: none; }
+  .day-selector { margin-bottom: 10px; }
+  .week-selector { margin-bottom: 16px; }
+  .day-pill, .week-pill {
     flex-shrink: 0; background: var(--card); border: 1px solid var(--border);
-    border-radius: 100px; padding: 8px 18px;
-    font-size: 0.8rem; font-weight: 500; color: var(--muted);
+    border-radius: 100px; padding: 8px 16px;
+    font-size: 0.78rem; font-weight: 500; color: var(--muted);
     cursor: pointer; transition: all 0.2s; white-space: nowrap;
   }
   .day-pill.active { background: var(--accent); border-color: var(--accent); color: #000; font-weight: 600; }
+  .week-pill.active { background: var(--accent2); border-color: var(--accent2); color: #001018; font-weight: 600; }
 
-  .day-full { font-size: 0.78rem; color: var(--muted); margin: 0 2px 18px; letter-spacing: 0.02em; }
+  .day-full { font-size: 0.78rem; color: var(--muted); margin: -6px 2px 16px; letter-spacing: 0.02em; }
 
   .ex-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 12px; overflow: hidden; }
 
@@ -105,15 +109,7 @@
     color: var(--accent); font-size: 0.9rem; pointer-events: none;
   }
 
-  /* Equipment toggle (legacy — retained for old-program history edits) */
-  .equip-toggle { display: flex; gap: 0; padding: 8px 16px; border-bottom: 1px solid var(--border); }
-  .equip-btn {
-    flex: 1; background: var(--surface); border: 1px solid var(--border);
-    color: var(--muted); font-family: 'DM Sans', sans-serif;
-    font-size: 0.72rem; font-weight: 500; padding: 6px 8px;
-    cursor: pointer; transition: all 0.15s; text-transform: uppercase; letter-spacing: 0.05em;
-  }
-  .equip-btn.active { background: var(--card); color: var(--text); border: 2px solid var(--accent); }
+  .tm-warn { padding: 8px 16px; font-size: 0.75rem; color: var(--red); border-bottom: 1px solid var(--border); }
 
   /* Suggestion / hint bar */
   .suggestion-bar {
@@ -124,17 +120,10 @@
   .suggestion-text span { font-weight: 600; color: var(--accent); }
 
   /* Plate calculator */
-  .plate-calc {
-    padding: 8px 16px 10px; border-bottom: 1px solid var(--border);
-    background: #111;
-  }
+  .plate-calc { padding: 8px 16px 10px; border-bottom: 1px solid var(--border); background: #111; }
   .plate-calc-label { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 6px; }
   .plate-chips { display: flex; flex-wrap: wrap; gap: 5px; }
-  .plate-chip {
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: 6px; padding: 3px 9px;
-    font-size: 0.78rem; font-weight: 600; color: var(--text);
-  }
+  .plate-chip { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 3px 9px; font-size: 0.78rem; font-weight: 600; color: var(--text); }
   .plate-chip.p45 { border-color: #f55442; color: #f55442; }
   .plate-chip.p35 { border-color: #f5a342; color: #f5a342; }
   .plate-chip.p25 { border-color: #42c8f5; color: #42c8f5; }
@@ -187,7 +176,7 @@
     background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
     color: var(--text); font-family: 'DM Sans', sans-serif;
     font-size: 0.85rem; font-weight: 300; padding: 10px 12px;
-    resize: none; height: 64px; margin: 8px 16px; width: calc(100% - 32px);
+    resize: none; height: 56px; margin: 8px 16px; width: calc(100% - 32px);
   }
   .notes-area:focus { outline: none; border-color: var(--accent2); }
   .notes-area::placeholder { color: var(--muted2); }
@@ -202,6 +191,30 @@
   }
   .save-btn:active { opacity: 0.8; }
   .save-btn:disabled { opacity: 0.5; }
+
+  /* Settings */
+  .settings-intro { font-size: 0.85rem; color: var(--muted); line-height: 1.5; margin-bottom: 16px; }
+  .settings-intro b { color: var(--text); }
+  .setting-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 4px 16px; margin-bottom: 16px; }
+  .setting-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--border); }
+  .setting-row:last-child { border-bottom: none; }
+  .setting-row label { font-size: 0.9rem; font-weight: 500; }
+  .setting-row input {
+    width: 110px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+    color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 0.95rem; font-weight: 600;
+    padding: 8px 10px; text-align: center; -webkit-appearance: none;
+  }
+  .setting-row input:focus { outline: none; border-color: var(--accent); }
+  .settings-btn {
+    width: 100%; background: var(--accent); color: #000;
+    font-family: 'Bebas Neue', sans-serif; font-size: 1.1rem; letter-spacing: 0.06em;
+    border: none; border-radius: 12px; padding: 14px; cursor: pointer; margin-bottom: 10px;
+  }
+  .settings-btn.ghost {
+    background: none; border: 1px solid var(--border); color: var(--muted);
+    font-family: 'DM Sans', sans-serif; font-size: 0.8rem; letter-spacing: 0.04em;
+    text-transform: uppercase; padding: 12px;
+  }
 
   /* History */
   .history-tabs { display: flex; gap: 8px; margin-bottom: 16px; }
@@ -239,6 +252,7 @@
   .history-sets { display: flex; flex-wrap: wrap; gap: 6px; }
   .history-set-chip { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 4px 10px; font-size: 0.78rem; color: #c0c0c0; }
   .history-set-chip.done { border-color: var(--accent); color: var(--accent); }
+  .history-set-chip.amrap { border-color: var(--accent2); color: var(--accent2); font-weight: 600; }
   .history-note { font-size: 0.8rem; color: var(--muted); font-style: italic; font-weight: 300; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
   .history-actions { display: flex; gap: 8px; margin-top: 10px; }
   .delete-btn, .edit-btn {
@@ -252,9 +266,7 @@
   .edit-btn:active { background: #2a2a00; }
 
   /* Progress charts */
-  .progress-lift-selector {
-    display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px;
-  }
+  .progress-lift-selector { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
   .lift-pill {
     background: var(--card); border: 1px solid var(--border);
     border-radius: 100px; padding: 6px 14px;
@@ -262,10 +274,7 @@
     cursor: pointer; transition: all 0.2s; white-space: nowrap;
   }
   .lift-pill.active { background: var(--accent); border-color: var(--accent); color: #000; font-weight: 600; }
-  .chart-container {
-    background: var(--card); border: 1px solid var(--border);
-    border-radius: 12px; padding: 16px; margin-bottom: 12px;
-  }
+  .chart-container { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 12px; }
   .chart-title { font-family: 'Bebas Neue', sans-serif; font-size: 1.1rem; letter-spacing: 0.05em; color: var(--accent); margin-bottom: 12px; }
   .chart-empty { text-align: center; padding: 30px; color: var(--muted); font-size: 0.82rem; }
 
@@ -283,8 +292,11 @@
 <body>
 
 <div class="top-nav">
-  <h1>Workout Log</h1>
-  <div class="date" id="todayDate"></div>
+  <h1>5/3/1 · BBB</h1>
+  <div class="nav-right">
+    <div class="date" id="todayDate"></div>
+    <button class="gear-btn" onclick="openSettings()">⚙</button>
+  </div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -292,13 +304,34 @@
 <!-- LOG SCREEN -->
 <div class="screen active" id="screen-log">
   <div class="day-selector" id="daySelector">
-    <div class="day-pill active" onclick="selectDay('MEU')" id="pill-MEU">ME Upper</div>
-    <div class="day-pill" onclick="selectDay('DEL')" id="pill-DEL">DE Lower</div>
-    <div class="day-pill" onclick="selectDay('RU')" id="pill-RU">Rep Upper</div>
-    <div class="day-pill" onclick="selectDay('MEL')" id="pill-MEL">ME Lower</div>
+    <div class="day-pill active" onclick="selectDay('D1')" id="pill-D1">Press</div>
+    <div class="day-pill" onclick="selectDay('D2')" id="pill-D2">Deadlift</div>
+    <div class="day-pill" onclick="selectDay('D3')" id="pill-D3">Bench</div>
+    <div class="day-pill" onclick="selectDay('D4')" id="pill-D4">Squat</div>
+  </div>
+  <div class="week-selector" id="weekSelector">
+    <div class="week-pill active" onclick="selectWeek(1)">Wk 1 · 5s</div>
+    <div class="week-pill" onclick="selectWeek(2)">Wk 2 · 3s</div>
+    <div class="week-pill" onclick="selectWeek(3)">Wk 3 · 5/3/1</div>
+    <div class="week-pill" onclick="selectWeek('deload')">Deload</div>
   </div>
   <div class="day-full" id="dayFull"></div>
   <div id="exerciseArea"></div>
+</div>
+
+<!-- SETTINGS SCREEN -->
+<div class="screen" id="screen-settings">
+  <div class="settings-intro">Your <b>Training Max</b> is about 90% of your true 1-rep max. Every weight in the app is calculated from these — set them once per cycle.</div>
+  <div class="setting-card">
+    <div class="setting-row"><label>Overhead Press</label><input id="tm-ohp" type="number" inputmode="decimal" placeholder="lb"></div>
+    <div class="setting-row"><label>Bench Press</label><input id="tm-bench" type="number" inputmode="decimal" placeholder="lb"></div>
+    <div class="setting-row"><label>Squat</label><input id="tm-squat" type="number" inputmode="decimal" placeholder="lb"></div>
+    <div class="setting-row"><label>Deadlift</label><input id="tm-dl" type="number" inputmode="decimal" placeholder="lb"></div>
+    <div class="setting-row"><label>BBB set %</label><input id="bbbPctInput" type="number" inputmode="numeric" placeholder="50"></div>
+  </div>
+  <button class="settings-btn" onclick="saveSettings()">Save Training Maxes</button>
+  <button class="settings-btn ghost" onclick="startNewCycle()">Start New Cycle · +5 upper / +10 lower</button>
+  <button class="settings-btn ghost" onclick="switchTab('log')">Back to Log</button>
 </div>
 
 <!-- HISTORY SCREEN -->
@@ -341,6 +374,7 @@ const HEADERS = {
   'Authorization': `Bearer ${SUPABASE_KEY}`,
   'Prefer': 'return=representation'
 };
+const CONFIG_DAY = '__CONFIG__';
 
 // Plate rack
 const RACK = [45, 35, 25, 10, 5, 5, 5, 5, 2.5, 2.5];
@@ -348,9 +382,8 @@ const BAR_WEIGHT = 45;
 
 // Barbell movements — drive the plate calculator
 const BARBELL_KEYS = [
-  'barbell bench','incline barbell','close-grip bench','floor press','board press',
-  'overhead press','back squat','front squat','box squat','safety-bar squat',
-  'deadlift','trap-bar','rack pull','barbell row','good morning'
+  'overhead press','bench press','close-grip bench','floor press','incline barbell',
+  'squat','deadlift','barbell row','good morning','rack pull','front squat','box squat'
 ];
 function isBarbellLift(name) {
   const n = (name || '').toLowerCase();
@@ -358,84 +391,88 @@ function isBarbellLift(name) {
   return BARBELL_KEYS.some(k => n.includes(k));
 }
 
-// ── Program: Westside for Skinny Bastards, Part 3 (4-day) ─────────
-// Each slot offers a rotating menu of exercise variations. The app
-// remembers weights per *variation* (not per slot), so a lift you did
-// three weeks ago is recalled the moment you pick it again.
+// ── Program: Wendler 5/3/1 — Boring But Big (4-day) ──────────────
+// Four main lifts, one per day. All weights are computed from each
+// lift's Training Max (TM ≈ 90% of 1RM). The Boring But Big work is
+// 5×10 of the *opposite* lift at 50% TM.
 const DAYS = {
-  MEU: {
-    label: 'ME Upper', full: 'Day 1 — Max-Effort Upper Body', badge: 'a',
-    slots: [
-      { slot: 'ME Press', type: 'Max Effort', target: 'Work up to 3–5RM', inputType: 'max_effort', sets: 5,
-        options: ['Flat Barbell Bench','Incline Barbell Bench','Close-Grip Bench','Floor Press','2-Board Press','Weighted Dip','Flat DB Press','Incline DB Press'] },
-      { slot: 'Supplemental Press', type: 'Supplemental', target: '3 × max reps', inputType: 'weight_reps', sets: 3,
-        options: ['Flat DB Bench','Incline DB Bench','Dips','Push-Ups'] },
-      { slot: 'Pull (Horizontal / Vertical)', type: 'Assistance', target: '4 × 8–12', inputType: 'weight_reps', sets: 4,
-        options: ['Barbell Row','1-Arm DB Row','Chest-Supported Row','Seated Cable Row','Lat Pulldown','Pull-Ups'] },
-      { slot: 'Rear Delts / Upper Back', type: 'Assistance', target: '3 × 12–15', inputType: 'weight_reps', sets: 3,
-        options: ['Face Pulls','Rear Delt Flye','Band Pull-Apart'] },
-      { slot: 'Biceps', type: 'Assistance', target: '3 × 8–12', inputType: 'weight_reps', sets: 3,
-        options: ['Barbell Curl','DB Curl','Hammer Curl','Incline DB Curl'] },
-    ]
-  },
-  DEL: {
-    label: 'DE Lower', full: 'Day 2 — Dynamic-Effort Lower Body', badge: 'b',
-    slots: [
-      { slot: 'Jump Training', type: 'Dynamic Effort', target: '6 × 2–3 (explosive)', inputType: 'reps', sets: 6,
-        options: ['Box Jump','Broad Jump','Squat Jump','Vertical Jump'] },
-      { slot: 'Unilateral', type: 'Main', target: '3 × 8–12 / leg', inputType: 'weight_reps', sets: 3,
-        options: ['Bulgarian Split Squat','Reverse Lunge','Walking Lunge','Step-Up'] },
-      { slot: 'Hip Extension / Posterior', type: 'Assistance', target: '3 × 8–12', inputType: 'weight_reps', sets: 3,
-        options: ['Romanian Deadlift','Glute-Ham Raise','Pull-Through','45° Back Raise','Good Morning'] },
-      { slot: 'Weighted Abs', type: 'Core', target: '3–4 × 10–15', inputType: 'weight_reps', sets: 3,
-        options: ['Hanging Leg Raise','Cable Crunch','Ab Wheel','Weighted Decline Sit-Up'] },
-    ]
-  },
-  RU: {
-    label: 'Rep Upper', full: 'Day 3 — Repetition Upper Body', badge: 'c',
-    slots: [
-      { slot: 'Repetition Press', type: 'Repetition', target: '3 × max reps · 60s rest', inputType: 'weight_reps', sets: 3,
-        options: ['Flat DB Bench','Incline DB Bench','Push-Ups','Dips'] },
-      { slot: 'Pull (Horizontal / Vertical)', type: 'Assistance', target: '3–4 × 8–12', inputType: 'weight_reps', sets: 4,
-        options: ['1-Arm DB Row','Chest-Supported Row','Seated Cable Row','Lat Pulldown','Pull-Ups','Barbell Row'] },
-      { slot: 'Medial / Rear Delts', type: 'Assistance', target: '3–4 × 8–15', inputType: 'weight_reps', sets: 3,
-        options: ['Lateral Raise','Rear Delt Flye','Face Pulls'] },
-      { slot: 'Traps / Upper Back', type: 'Assistance', target: '3–4 × 8–15', inputType: 'weight_reps', sets: 3,
-        options: ['DB Shrug','Barbell Shrug','Power Shrug'] },
-      { slot: 'Biceps', type: 'Assistance', target: '3–4 × 8–15', inputType: 'weight_reps', sets: 3,
-        options: ['DB Curl','Barbell Curl','Hammer Curl','Incline DB Curl'] },
-    ]
-  },
-  MEL: {
-    label: 'ME Lower', full: 'Day 4 — Max-Effort Lower Body', badge: 'd',
-    slots: [
-      { slot: 'ME Squat / Deadlift', type: 'Max Effort', target: 'Work up to 5RM', inputType: 'max_effort', sets: 5,
-        options: ['Box Squat','Back Squat','Front Squat','Safety-Bar Squat','Deadlift','Trap-Bar Deadlift','Rack Pull'] },
-      { slot: 'Unilateral', type: 'Main', target: '3 × 8–12 / leg', inputType: 'weight_reps', sets: 3,
-        options: ['Bulgarian Split Squat','Reverse Lunge','Walking Lunge','Step-Up'] },
-      { slot: 'Hip Extension / Posterior', type: 'Assistance', target: '3 × 8–12', inputType: 'weight_reps', sets: 3,
-        options: ['Romanian Deadlift','Glute-Ham Raise','Pull-Through','45° Back Raise','Good Morning'] },
-      { slot: 'Weighted Abs', type: 'Core', target: '3–4 × 10–15', inputType: 'weight_reps', sets: 3,
-        options: ['Hanging Leg Raise','Cable Crunch','Ab Wheel','Weighted Decline Sit-Up'] },
-    ]
-  }
+  D1: { label: 'Press',    full: 'Day 1 — Overhead Press', badge: 'a', mainLift: 'Overhead Press' },
+  D2: { label: 'Deadlift', full: 'Day 2 — Deadlift',       badge: 'b', mainLift: 'Deadlift' },
+  D3: { label: 'Bench',    full: 'Day 3 — Bench Press',    badge: 'c', mainLift: 'Bench Press' },
+  D4: { label: 'Squat',    full: 'Day 4 — Squat',          badge: 'd', mainLift: 'Squat' },
+};
+const BBB_OPPOSITE = {
+  'Overhead Press': 'Bench Press',
+  'Bench Press': 'Overhead Press',
+  'Squat': 'Deadlift',
+  'Deadlift': 'Squat',
+};
+const TM_FIELDS = [['ohp','Overhead Press'], ['bench','Bench Press'], ['squat','Squat'], ['dl','Deadlift']];
+
+// 5/3/1 weekly waves. work tuple = [pct, targetReps, isAMRAP]
+const WEEK_SCHEMES = {
+  1:        { label: 'Week 1 · 5s',    warmup: [[40,5],[50,5],[60,3]], work: [[65,5,false],[75,5,false],[85,5,true]] },
+  2:        { label: 'Week 2 · 3s',    warmup: [[40,5],[50,5],[60,3]], work: [[70,3,false],[80,3,false],[90,3,true]] },
+  3:        { label: 'Week 3 · 5/3/1', warmup: [[40,5],[50,5],[60,3]], work: [[75,5,false],[85,3,false],[95,1,true]] },
+  deload:   { label: 'Deload',         warmup: [],                     work: [[40,5,false],[50,5,false],[60,5,false]] },
 };
 
+// Assistance (minimal — chins + abs), rotating menus
+const ASSIST = [
+  { id:'pull', kind:'assist', slot:'Pull',  type:'Assistance', target:'5 × 10–20', inputType:'weight_reps', sets:5, options:['Chin-Ups','Pull-Ups','Lat Pulldown','1-Arm DB Row'] },
+  { id:'core', kind:'assist', slot:'Core',  type:'Assistance', target:'5 × 10–20', inputType:'weight_reps', sets:5, options:['Hanging Leg Raise','Cable Crunch','Ab Wheel','Weighted Sit-Up'] },
+];
+
 // ── State ────────────────────────────────────────────────────────
-let currentDay = 'MEU';
-let logState = {};        // { slotKey: { sets:[...], note } }
-let variationState = {};  // { slotKey: chosenVariation }
+let currentDay = 'D1';
+let currentWeek = 1;        // 1, 2, 3, or 'deload'
+let logState = {};          // { key: { sets:[...], note } }
+let variationState = {};    // { key: chosenVariation }
 let editingId = null;
 let historyCache = null;
 let progressChart = null;
 let selectedLift = null;
+let config = { tms: { 'Overhead Press':0, 'Bench Press':0, 'Squat':0, 'Deadlift':0 }, bbbPct: 50, week: 1 };
+let configId = null;
 
-function slotKey(day, slot) { return day + '_' + slot.replace(/[^a-z0-9]/gi, '_'); }
+// ── Helpers ───────────────────────────────────────────────────────
+function roundTo5(x) { return Math.round(x / 5) * 5; }
+function e1rm(weight, reps) { const w = parseFloat(weight), r = parseInt(reps); if (!w || !r) return 0; return Math.round(w * (1 + r / 30)); }
+function fmt(d) { return new Date(d).toLocaleDateString('en-US', { month:'short', day:'numeric' }); }
+function normWeek(w) { return w === 'deload' ? 'deload' : (parseInt(w) || 1); }
+function weekShort(w) { return w === 'deload' ? 'Deload' : `Wk${w}`; }
+
+function getSlots(day) {
+  const main = DAYS[day].mainLift;
+  const bbb = BBB_OPPOSITE[main];
+  return [
+    { id:'main', kind:'main', slot:`${main} (5/3/1)`, type:'Main Lift', lift:main, weekDependent:true },
+    { id:'bbb',  kind:'bbb',  slot:`${bbb} (BBB 5×10)`, type:'Boring But Big', lift:bbb, weekDependent:true },
+    ...ASSIST,
+  ];
+}
+function keyFor(cfg) { return cfg.weekDependent ? `${currentDay}_${currentWeek}_${cfg.id}` : `${currentDay}_${cfg.id}`; }
 
 function blankSetFor(inputType) {
-  if (inputType === 'timed' || inputType === 'timed_per_side') return { duration: '', done: false };
-  if (inputType === 'per_side' || inputType === 'reps') return { reps: '', done: false };
-  return { weight: '', reps: '', done: false };
+  if (inputType === 'timed' || inputType === 'timed_per_side') return { duration:'', done:false };
+  if (inputType === 'per_side' || inputType === 'reps') return { reps:'', done:false };
+  return { weight:'', reps:'', done:false };
+}
+
+// Prescribed rows for the main 5/3/1 lift
+function mainRows(lift) {
+  const tm = config.tms[lift] || 0;
+  const scheme = WEEK_SCHEMES[currentWeek];
+  const rows = [];
+  (scheme.warmup || []).forEach(([pct, reps]) => rows.push({ pct, reps, warmup:true, amrap:false }));
+  scheme.work.forEach(([pct, reps, amrap]) => rows.push({ pct, reps, warmup:false, amrap:!!amrap }));
+  return rows.map(r => ({ ...r, weight: tm ? roundTo5(tm * r.pct / 100) : '' }));
+}
+// Prescribed rows for the BBB 5×10
+function bbbRows(lift) {
+  const tm = config.tms[lift] || 0;
+  const w = tm ? roundTo5(tm * config.bbbPct / 100) : '';
+  return Array.from({ length:5 }, () => ({ pct:config.bbbPct, reps:10, warmup:false, amrap:false, weight:w }));
 }
 
 // ── Supabase ─────────────────────────────────────────────────────
@@ -449,17 +486,52 @@ async function dbFetch(path, options = {}) {
 async function getHistory(force = false) {
   if (historyCache && !force) return historyCache;
   try {
-    historyCache = await dbFetch('workouts?order=created_at.desc');
+    const rows = await dbFetch('workouts?order=created_at.desc');
+    historyCache = rows.filter(e => e.day !== CONFIG_DAY);
     return historyCache;
   } catch(e) { console.error('Failed to load history', e); return []; }
 }
 
-// Most recent logged session of a given exercise variation (across any day)
+async function getConfig() {
+  try {
+    const rows = await dbFetch(`workouts?day=eq.${CONFIG_DAY}&limit=1`);
+    if (rows && rows.length) {
+      configId = rows[0].id;
+      const c = rows[0].exercises || {};
+      config = { tms: { ...config.tms, ...(c.tms || {}) }, bbbPct: c.bbbPct || 50, week: normWeek(c.week || 1) };
+      currentWeek = config.week;
+    }
+  } catch(e) { console.error('config load failed', e); }
+}
+
+async function saveConfig(opts = {}) {
+  const payload = { day: CONFIG_DAY, week: null, exercises: { tms: config.tms, bbbPct: config.bbbPct, week: currentWeek } };
+  try {
+    if (configId) await dbFetch(`workouts?id=eq.${configId}`, { method:'PATCH', body: JSON.stringify(payload) });
+    else { const r = await dbFetch('workouts', { method:'POST', body: JSON.stringify(payload) }); if (r && r[0]) configId = r[0].id; }
+    historyCache = null;
+    if (!opts.silent) showToast('Settings saved ✓');
+  } catch(e) { if (!opts.silent) showToast('Save failed'); console.error(e); }
+}
+
+// Most recent logged session of a given exercise (across any day)
 function findLastForName(history, name) {
   for (const entry of history) {
     if (editingId && entry.id === editingId) continue;
     const ex = (entry.exercises || []).find(e => e.name === name);
     if (ex) return { ex, date: entry.created_at };
+  }
+  return null;
+}
+// Most recent AMRAP result for a main lift
+function lastAmrap(history, lift) {
+  for (const entry of history) {
+    if (editingId && entry.id === editingId) continue;
+    const ex = (entry.exercises || []).find(e => e.name === lift);
+    if (!ex) continue;
+    let a = (ex.sets || []).find(s => s.amrap && s.weight && s.reps);
+    if (!a) { const w = (ex.sets || []).filter(s => s.weight && s.reps).sort((x,y) => parseFloat(y.weight) - parseFloat(x.weight)); a = w[0]; }
+    if (a && a.weight && a.reps) return { date: fmt(entry.created_at), weight: a.weight, reps: a.reps, e: e1rm(a.weight, a.reps) };
   }
   return null;
 }
@@ -473,15 +545,10 @@ function calcPlates(totalWeight) {
   const available = [...RACK].sort((a,b) => b - a);
   for (const plate of available) {
     if (remaining <= 0) break;
-    if (plate <= remaining + 0.01) {
-      used.push(plate);
-      remaining -= plate;
-      remaining = Math.round(remaining * 100) / 100;
-    }
+    if (plate <= remaining + 0.01) { used.push(plate); remaining -= plate; remaining = Math.round(remaining * 100) / 100; }
   }
   return used;
 }
-
 function renderPlates(plates) {
   if (!plates.length) return `<span class="plate-none">Bar only</span>`;
   const colorClass = { 45:'p45', 35:'p35', 25:'p25', 10:'p10', 5:'p5', 2.5:'p2h' };
@@ -490,8 +557,16 @@ function renderPlates(plates) {
 
 // ── State helpers ─────────────────────────────────────────────────
 function getState(key, sets, inputType) {
+  if (!logState[key]) logState[key] = { sets: Array.from({length: sets}, () => ({...blankSetFor(inputType)})), note: '' };
+  return logState[key];
+}
+function getLiftState(key, rows) {
   if (!logState[key]) {
-    logState[key] = { sets: Array.from({length: sets}, () => ({...blankSetFor(inputType)})), note: '' };
+    logState[key] = { sets: rows.map(r => ({
+      weight: r.weight === '' ? '' : String(r.weight),
+      reps: r.amrap ? '' : String(r.reps),
+      done: false, warmup: !!r.warmup, amrap: !!r.amrap, min: r.amrap ? r.reps : undefined
+    })), note: '' };
   }
   return logState[key];
 }
@@ -503,85 +578,122 @@ async function renderExercises() {
   const history = await getHistory();
   area.innerHTML = '';
 
-  const day = DAYS[currentDay];
-  day.slots.forEach(cfg => {
-    const key = slotKey(currentDay, cfg.slot);
-    const inputType = cfg.inputType || 'weight_reps';
-    if (!variationState[key]) variationState[key] = cfg.options[0];
-    const variation = variationState[key];
-    const state = getState(key, cfg.sets, inputType);
-
-    const lastInfo = findLastForName(history, variation);
-    const last = lastInfo ? lastInfo.ex : null;
-    const dateStr = lastInfo ? new Date(lastInfo.date).toLocaleDateString('en-US', { month:'short', day:'numeric' }) : '';
-
-    // Variation dropdown (only when there's a real choice)
-    let dropdown = '';
-    if (cfg.options.length > 1) {
-      dropdown = `<div class="variation-wrap"><select class="variation-select" onchange="selectVariation('${key}', this.value)">`
-        + cfg.options.map(o => `<option ${o === variation ? 'selected' : ''}>${o}</option>`).join('')
-        + `</select></div>`;
-    }
-
-    // Max-effort top-set hint
-    let meHint = '';
-    if (inputType === 'max_effort' && last) {
-      const wsets = last.sets.filter(s => s.weight).map(s => ({ w: parseFloat(s.weight), r: s.reps }));
-      if (wsets.length) {
-        const top = wsets.reduce((a,b) => b.w > a.w ? b : a);
-        meHint = `<div class="suggestion-bar"><div class="suggestion-text">Last top set → <span>${top.w} lb × ${top.r || '?'}</span></div></div>`;
-      }
-    }
-
-    // Last-session recall hint
-    let lastHint = '';
-    if (last) {
-      let summary = '';
-      if (inputType === 'reps') summary = last.sets.filter(s => s.reps).map(s => `${s.reps}`).join(', ');
-      else if (inputType === 'timed' || inputType === 'timed_per_side') summary = last.sets.filter(s => s.duration).map(s => `${s.duration}s`).join(', ');
-      else if (inputType === 'per_side') summary = last.sets.filter(s => s.reps).map(s => `${s.reps}/side`).join(', ');
-      else summary = last.sets.filter(s => s.weight).map(s => `${s.weight}×${s.reps || '?'}`).join(', ');
-      if (summary) lastHint = `<div class="last-session">Last ${dateStr}: ${summary}</div>`;
-    }
-
-    // Plate calculator (barbell movements)
-    let plateSection = '';
-    if (isBarbellLift(variation)) {
-      const weights = last ? last.sets.filter(s => s.weight).map(s => parseFloat(s.weight)) : [];
-      const baseW = weights.length ? Math.max(...weights) : 0;
-      plateSection = `<div class="plate-calc">
-        <div class="plate-calc-label">Plates per side${baseW > 0 ? ` · last ${baseW}lb` : ''}</div>
-        <div class="plate-chips">${baseW > 0 ? renderPlates(calcPlates(baseW)) : '<span class="plate-none">Enter a weight</span>'}</div>
-      </div>`;
-    }
-
-    const setsHTML = buildSetRows(key, inputType, state, last);
-
+  const slots = getSlots(currentDay);
+  slots.forEach(cfg => {
+    const key = keyFor(cfg);
     const card = document.createElement('div');
     card.className = 'ex-card';
     card.id = `excard-${key}`;
-    card.innerHTML = `
-      <div class="ex-card-header">
-        <div><div class="ex-card-name">${dropdown ? cfg.slot : variation}</div><div class="ex-card-type">${cfg.type}</div></div>
-        <div class="ex-target">${cfg.target}</div>
-      </div>
-      ${dropdown}
-      ${meHint}
-      ${lastHint}
-      ${plateSection}
-      ${setsHTML}
-      <textarea class="notes-area" placeholder="Notes…" onchange="updateNote('${key}', this.value)">${state.note}</textarea>
-    `;
+    card.innerHTML = (cfg.kind === 'assist') ? renderAssistCard(cfg, key, history) : renderLiftCard(cfg, key, history);
     area.appendChild(card);
   });
+
+  slots.forEach(cfg => { if (cfg.kind === 'main') updateE1RM(keyFor(cfg)); });
+}
+
+function renderLiftCard(cfg, key, history) {
+  const lift = cfg.lift;
+  const tm = config.tms[lift] || 0;
+  const rows = cfg.kind === 'main' ? mainRows(lift) : bbbRows(lift);
+  const state = getLiftState(key, rows);
+  const scheme = WEEK_SCHEMES[currentWeek];
+  const target = cfg.kind === 'main' ? scheme.label : `5 × 10 @ ${config.bbbPct}%`;
+  const typeLine = `${cfg.type} · TM ${tm || '—'}`;
+  const warn = tm ? '' : `<div class="tm-warn">Set your Training Max in ⚙ Settings to see weights.</div>`;
+
+  const e1rmDiv = cfg.kind === 'main' ? `<div class="suggestion-bar" id="e1rm-${key}"></div>` : '';
+
+  let lastHint = '';
+  if (cfg.kind === 'main') {
+    const la = lastAmrap(history, lift);
+    if (la) lastHint = `<div class="last-session">Last ${la.date}: ${la.weight}×${la.reps} · est 1RM ${la.e}</div>`;
+  }
+
+  let plateSection = '';
+  if (tm) {
+    const workW = rows.filter(r => !r.warmup && r.weight).map(r => r.weight);
+    const topW = workW.length ? Math.max(...workW) : 0;
+    plateSection = `<div class="plate-calc">
+      <div class="plate-calc-label">Plates per side · top set ${topW}lb</div>
+      <div class="plate-chips">${topW > 0 ? renderPlates(calcPlates(topW)) : '<span class="plate-none">—</span>'}</div>
+    </div>`;
+  }
+
+  const setsHTML = buildLiftRows(key, state);
+
+  return `<div class="ex-card-header">
+      <div><div class="ex-card-name">${lift}</div><div class="ex-card-type">${typeLine}</div></div>
+      <div class="ex-target">${target}</div>
+    </div>
+    ${warn}${e1rmDiv}${lastHint}${plateSection}${setsHTML}
+    <textarea class="notes-area" placeholder="Notes…" onchange="updateNote('${key}', this.value)">${state.note}</textarea>`;
+}
+
+function buildLiftRows(key, state) {
+  const check = (s, i) => `<button class="set-check ${s.done ? 'done' : ''}" onclick="toggleDone('${key}', ${i}, this)">${s.done ? '✓' : ''}</button>`;
+  const labels = `<div class="set-labels"><div class="set-label"></div><div class="set-label">Weight (lb)</div><div class="set-label">Reps</div><div class="set-label"></div></div>`;
+  let rows = '', workIdx = 0;
+  state.sets.forEach((s, i) => {
+    const num = s.warmup ? 'W' : String(++workIdx);
+    const rph = s.amrap ? `${s.min || ''}+` : (s.reps || 'reps');
+    const extra = s.amrap ? `;updateE1RM('${key}')` : '';
+    rows += `<div class="set-row" style="${s.warmup ? 'opacity:0.55' : ''}"><div class="set-num">${num}</div>
+      <input class="set-input w-input" type="number" inputmode="decimal" placeholder="lbs" value="${s.weight || ''}" onchange="updateSet('${key}', ${i}, 'weight', this.value);updatePlateDisplay('${key}')${extra}" />
+      <input class="set-input" type="number" inputmode="numeric" placeholder="${rph}" value="${s.reps || ''}" onchange="updateSet('${key}', ${i}, 'reps', this.value)${extra}" />
+      ${check(s, i)}</div>`;
+  });
+  return `<div class="set-rows">${labels}${rows}</div><button class="add-set-btn" onclick="addSet('${key}', 'weight_reps')">+ Add Set</button>`;
+}
+
+function renderAssistCard(cfg, key, history) {
+  const inputType = cfg.inputType || 'weight_reps';
+  if (!variationState[key]) variationState[key] = cfg.options[0];
+  const variation = variationState[key];
+  const state = getState(key, cfg.sets, inputType);
+  const lastInfo = findLastForName(history, variation);
+  const last = lastInfo ? lastInfo.ex : null;
+  const dateStr = lastInfo ? fmt(lastInfo.date) : '';
+
+  let dropdown = '';
+  if (cfg.options.length > 1) {
+    dropdown = `<div class="variation-wrap"><select class="variation-select" onchange="selectVariation('${key}', this.value)">`
+      + cfg.options.map(o => `<option ${o === variation ? 'selected' : ''}>${o}</option>`).join('')
+      + `</select></div>`;
+  }
+
+  let lastHint = '';
+  if (last) {
+    const summary = last.sets.filter(s => s.weight || s.reps).map(s => s.weight ? `${s.weight}×${s.reps || '?'}` : `${s.reps}`).join(', ');
+    if (summary) lastHint = `<div class="last-session">Last ${dateStr}: ${summary}</div>`;
+  }
+
+  let plateSection = '';
+  if (isBarbellLift(variation)) {
+    const ws = last ? last.sets.filter(s => s.weight).map(s => parseFloat(s.weight)) : [];
+    const bw = ws.length ? Math.max(...ws) : 0;
+    plateSection = `<div class="plate-calc">
+      <div class="plate-calc-label">Plates per side${bw > 0 ? ` · last ${bw}lb` : ''}</div>
+      <div class="plate-chips">${bw > 0 ? renderPlates(calcPlates(bw)) : '<span class="plate-none">Enter a weight</span>'}</div>
+    </div>`;
+  }
+
+  const setsHTML = buildSetRows(key, inputType, state, last);
+
+  return `<div class="ex-card-header">
+      <div><div class="ex-card-name">${dropdown ? cfg.slot : variation}</div><div class="ex-card-type">${cfg.type}</div></div>
+      <div class="ex-target">${cfg.target}</div>
+    </div>
+    ${dropdown}${lastHint}${plateSection}${setsHTML}
+    <textarea class="notes-area" placeholder="Notes…" onchange="updateNote('${key}', this.value)">${state.note}</textarea>`;
 }
 
 function buildSetRows(key, inputType, state, last) {
   const check = (s, i) => `<button class="set-check ${s.done ? 'done' : ''}" onclick="toggleDone('${key}', ${i}, this)">${s.done ? '✓' : ''}</button>`;
   let labels = '', rows = '';
 
-  if (inputType === 'reps') {
-    labels = `<div class="set-labels"><div class="set-label"></div><div class="set-label" style="grid-column:span 2">Reps</div><div class="set-label"></div></div>`;
+  if (inputType === 'reps' || inputType === 'per_side') {
+    const lbl = inputType === 'per_side' ? 'Reps / side' : 'Reps';
+    labels = `<div class="set-labels"><div class="set-label"></div><div class="set-label" style="grid-column:span 2">${lbl}</div><div class="set-label"></div></div>`;
     state.sets.forEach((s, i) => {
       const ph = last?.sets[i]?.reps || 'reps';
       rows += `<div class="set-row"><div class="set-num">${i+1}</div>
@@ -597,81 +709,115 @@ function buildSetRows(key, inputType, state, last) {
         <input class="set-input" type="number" inputmode="numeric" placeholder="${ph}" value="${s.duration || ''}" onchange="updateSet('${key}', ${i}, 'duration', this.value)" style="grid-column:span 2" />
         ${check(s, i)}</div>`;
     });
-  } else if (inputType === 'per_side') {
-    labels = `<div class="set-labels"><div class="set-label"></div><div class="set-label" style="grid-column:span 2">Reps / side</div><div class="set-label"></div></div>`;
-    state.sets.forEach((s, i) => {
-      const ph = last?.sets[i]?.reps || 'reps';
-      rows += `<div class="set-row"><div class="set-num">${i+1}</div>
-        <input class="set-input" type="number" inputmode="numeric" placeholder="${ph}" value="${s.reps || ''}" onchange="updateSet('${key}', ${i}, 'reps', this.value)" style="grid-column:span 2" />
-        ${check(s, i)}</div>`;
-    });
   } else {
-    // weight_reps / max_effort
     labels = `<div class="set-labels"><div class="set-label"></div><div class="set-label">Weight (lb)</div><div class="set-label">Reps</div><div class="set-label"></div></div>`;
     state.sets.forEach((s, i) => {
       const wph = last?.sets[i]?.weight || 'lbs';
       const rph = last?.sets[i]?.reps || 'reps';
       rows += `<div class="set-row"><div class="set-num">${i+1}</div>
-        <input class="set-input" type="number" inputmode="decimal" placeholder="${wph}" value="${s.weight || ''}" onchange="updateSet('${key}', ${i}, 'weight', this.value);updatePlateDisplay('${key}')" />
+        <input class="set-input w-input" type="number" inputmode="decimal" placeholder="${wph}" value="${s.weight || ''}" onchange="updateSet('${key}', ${i}, 'weight', this.value);updatePlateDisplay('${key}')" />
         <input class="set-input" type="number" inputmode="numeric" placeholder="${rph}" value="${s.reps || ''}" onchange="updateSet('${key}', ${i}, 'reps', this.value)" />
         ${check(s, i)}</div>`;
     });
   }
-
   return `<div class="set-rows">${labels}${rows}</div><button class="add-set-btn" onclick="addSet('${key}', '${inputType}')">+ Add Set</button>`;
 }
 
 function updatePlateDisplay(key) {
   const card = document.getElementById(`excard-${key}`);
   if (!card) return;
-  const plateChips = card.querySelector('.plate-chips');
-  if (!plateChips) return;
-  const inputs = card.querySelectorAll('.set-input');
+  const chips = card.querySelector('.plate-chips');
+  if (!chips) return;
   let w = 0;
-  for (const inp of inputs) { if (inp.value) { w = parseFloat(inp.value); break; } }
-  if (w > 0) plateChips.innerHTML = renderPlates(calcPlates(w));
+  card.querySelectorAll('.w-input').forEach(inp => { const v = parseFloat(inp.value); if (v > w) w = v; });
+  if (w > 0) chips.innerHTML = renderPlates(calcPlates(w));
 }
 
-function selectVariation(key, value) {
-  variationState[key] = value;
-  renderExercises();
+function updateE1RM(key) {
+  const st = logState[key];
+  const el = document.getElementById(`e1rm-${key}`);
+  if (!st || !el) return;
+  const a = st.sets.find(s => s.amrap);
+  if (a && a.weight && a.reps) el.innerHTML = `<div class="suggestion-text">Est. 1RM → <span>${e1rm(a.weight, a.reps)} lb</span></div>`;
+  else el.innerHTML = `<div class="suggestion-text">Top set is AMRAP — log every rep you get</div>`;
 }
 
+function selectVariation(key, value) { variationState[key] = value; renderExercises(); }
 function updateSet(key, idx, field, val) { logState[key].sets[idx][field] = val; }
 function updateNote(key, val) { logState[key].note = val; }
-
 function toggleDone(key, idx, btn) {
   logState[key].sets[idx].done = !logState[key].sets[idx].done;
   btn.classList.toggle('done');
   btn.textContent = logState[key].sets[idx].done ? '✓' : '';
 }
+function addSet(key, inputType) { logState[key].sets.push({...blankSetFor(inputType)}); renderExercises(); }
 
-function addSet(key, inputType) {
-  logState[key].sets.push({...blankSetFor(inputType)});
-  renderExercises();
-}
-
-// ── Day selection ─────────────────────────────────────────────────
+// ── Day / Week ────────────────────────────────────────────────────
 function selectDay(day) {
   currentDay = day;
   document.querySelectorAll('.day-pill').forEach(p => p.classList.remove('active'));
-  const pill = document.getElementById(`pill-${day}`);
-  if (pill) pill.classList.add('active');
+  document.getElementById(`pill-${day}`)?.classList.add('active');
   document.getElementById('dayFull').textContent = DAYS[day].full;
   document.getElementById('saveBtn').style.display = 'block';
   renderExercises();
 }
+function setWeekPills() {
+  const pills = document.querySelectorAll('.week-pill');
+  pills.forEach(p => p.classList.remove('active'));
+  const idx = { 1:0, 2:1, 3:2, 'deload':3 }[currentWeek] ?? 0;
+  if (pills[idx]) pills[idx].classList.add('active');
+}
+function selectWeek(w) {
+  currentWeek = w;
+  config.week = w;
+  setWeekPills();
+  saveConfig({ silent:true });
+  renderExercises();
+}
+
+// ── Settings ──────────────────────────────────────────────────────
+function openSettings() {
+  TM_FIELDS.forEach(([id, lift]) => { const el = document.getElementById(`tm-${id}`); if (el) el.value = config.tms[lift] || ''; });
+  document.getElementById('bbbPctInput').value = config.bbbPct;
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('screen-settings').classList.add('active');
+  document.getElementById('saveBtn').style.display = 'none';
+}
+async function saveSettings() {
+  TM_FIELDS.forEach(([id, lift]) => { const el = document.getElementById(`tm-${id}`); config.tms[lift] = parseFloat(el.value) || 0; });
+  const b = parseFloat(document.getElementById('bbbPctInput').value);
+  config.bbbPct = b > 0 ? b : 50;
+  await saveConfig();
+  logState = {};
+  switchTab('log');
+  selectDay(currentDay);
+}
+async function startNewCycle() {
+  config.tms['Overhead Press'] = (config.tms['Overhead Press'] || 0) + 5;
+  config.tms['Bench Press']    = (config.tms['Bench Press'] || 0) + 5;
+  config.tms['Squat']          = (config.tms['Squat'] || 0) + 10;
+  config.tms['Deadlift']       = (config.tms['Deadlift'] || 0) + 10;
+  currentWeek = 1; config.week = 1;
+  logState = {};
+  await saveConfig();
+  setWeekPills();
+  openSettings();
+  showToast('New cycle — TMs bumped ✓');
+}
 
 // ── Save / Edit ───────────────────────────────────────────────────
 async function saveWorkout() {
-  const day = DAYS[currentDay];
+  const slots = getSlots(currentDay);
   const saved = [];
-  day.slots.forEach(cfg => {
-    const key = slotKey(currentDay, cfg.slot);
+  slots.forEach(cfg => {
+    const key = keyFor(cfg);
     const state = logState[key];
     if (!state) return;
     if (!state.sets.some(s => s.weight || s.reps || s.duration)) return;
-    saved.push({ slot: cfg.slot, type: cfg.type, name: variationState[key] || cfg.options[0], sets: state.sets, note: state.note });
+    const name = cfg.kind === 'assist' ? (variationState[key] || cfg.options[0])
+      : cfg.kind === 'bbb' ? `${cfg.lift} (BBB)` : cfg.lift;
+    saved.push({ slot: cfg.slot, type: cfg.type, kind: cfg.kind, name, week: currentWeek, sets: state.sets, note: state.note });
   });
   if (!saved.length) { showToast('Log at least one set first'); return; }
 
@@ -680,17 +826,11 @@ async function saveWorkout() {
 
   try {
     if (editingId) {
-      await dbFetch(`workouts?id=eq.${editingId}`, {
-        method: 'PATCH',
-        body: JSON.stringify({ day: currentDay, week: null, exercises: saved })
-      });
+      await dbFetch(`workouts?id=eq.${editingId}`, { method:'PATCH', body: JSON.stringify({ day: currentDay, week: String(currentWeek), exercises: saved }) });
       editingId = null;
       showToast('Workout updated ✓');
     } else {
-      await dbFetch('workouts', {
-        method: 'POST',
-        body: JSON.stringify({ day: currentDay, week: null, exercises: saved })
-      });
+      await dbFetch('workouts', { method:'POST', body: JSON.stringify({ day: currentDay, week: String(currentWeek), exercises: saved }) });
       showToast('Workout saved ✓');
     }
     historyCache = null;
@@ -711,18 +851,21 @@ async function loadForEdit(id) {
 
   editingId = id;
   currentDay = entry.day;
+  currentWeek = normWeek(entry.week);
   logState = {};
+  const slots = getSlots(currentDay);
   entry.exercises.forEach(ex => {
-    const slot = ex.slot || ex.name;
-    const key = slotKey(currentDay, slot);
-    variationState[key] = ex.name;
+    const cfg = slots.find(s => s.slot === ex.slot) || slots.find(s => s.lift === ex.name) || slots.find(s => (s.options || []).includes(ex.name));
+    if (!cfg) return;
+    const key = keyFor(cfg);
+    if (cfg.kind === 'assist') variationState[key] = ex.name;
     logState[key] = { sets: ex.sets.map(s => ({...s})), note: ex.note || '' };
   });
   switchTab('log');
   document.querySelectorAll('.day-pill').forEach(p => p.classList.remove('active'));
-  const pill = document.getElementById(`pill-${currentDay}`);
-  if (pill) pill.classList.add('active');
+  document.getElementById(`pill-${currentDay}`)?.classList.add('active');
   document.getElementById('dayFull').textContent = DAYS[currentDay].full;
+  setWeekPills();
   renderExercises();
   document.getElementById('saveBtn').textContent = 'Update Workout';
   showToast('Loaded for editing');
@@ -742,7 +885,10 @@ function switchHistoryTab(tab) {
 }
 
 function dayMeta(entry) {
-  if (DAYS[entry.day]) return { label: DAYS[entry.day].label, badge: DAYS[entry.day].badge };
+  if (DAYS[entry.day]) {
+    const wk = entry.week ? ` · ${weekShort(normWeek(entry.week))}` : '';
+    return { label: DAYS[entry.day].label + wk, badge: DAYS[entry.day].badge };
+  }
   const letter = (entry.day || '?').toString().toLowerCase();
   return { label: `Day ${entry.day}`, badge: ['a','b','c','d'].includes(letter) ? letter : 'a' };
 }
@@ -765,10 +911,11 @@ async function renderHistory() {
       const setsHTML = (ex.sets || []).map((s,i) => {
         let label = '';
         if (s.duration) label = `${s.duration}s`;
-        else if (s.weight) label = `${s.weight}lb${s.reps ? ` × ${s.reps}` : ''}`;
+        else if (s.weight) label = `${s.weight}lb${s.reps ? ` × ${s.reps}` : ''}${s.amrap ? '+' : ''}`;
         else if (s.reps) label = `${s.reps}`;
         if (!label) return '';
-        return `<div class="history-set-chip ${s.done ? 'done' : ''}">${i+1}. ${label}</div>`;
+        const cls = s.amrap ? 'amrap' : (s.done ? 'done' : '');
+        return `<div class="history-set-chip ${cls}">${i+1}. ${label}</div>`;
       }).join('');
       const slotTag = ex.slot && ex.slot !== ex.name ? ` <span class="history-ex-slot">· ${ex.slot}</span>` : '';
       return `<div class="history-ex">
@@ -800,19 +947,14 @@ function toggleHistory(idx, header) {
 }
 
 async function deleteEntry(id) {
-  try {
-    await dbFetch(`workouts?id=eq.${id}`, { method: 'DELETE' });
-    historyCache = null;
-    renderHistory();
-  } catch(e) { showToast('Delete failed'); }
+  try { await dbFetch(`workouts?id=eq.${id}`, { method:'DELETE' }); historyCache = null; renderHistory(); }
+  catch(e) { showToast('Delete failed'); }
 }
 
 // ── Progress Charts ───────────────────────────────────────────────
 function chartLifts(history) {
   const s = new Set();
-  history.forEach(e => (e.exercises || []).forEach(ex => {
-    if ((ex.sets || []).some(x => x.weight)) s.add(ex.name);
-  }));
+  history.forEach(e => (e.exercises || []).forEach(ex => { if ((ex.sets || []).some(x => x.weight)) s.add(ex.name); }));
   return [...s].sort();
 }
 
@@ -828,22 +970,18 @@ async function renderProgress() {
     document.getElementById('chartTitle').textContent = 'No data yet';
     canvas.style.display = 'none';
     empty.style.display = 'block';
-    empty.textContent = 'Log some weighted lifts to see progress.';
+    empty.textContent = 'Log some lifts to see progress.';
     return;
   }
 
   if (selectedLift === null || !lifts.includes(selectedLift)) selectedLift = lifts[0];
-  sel.innerHTML = lifts.map(l =>
-    `<div class="lift-pill ${l === selectedLift ? 'active' : ''}" onclick="selectLift('${l}')">${l}</div>`
-  ).join('');
+  sel.innerHTML = lifts.map(l => `<div class="lift-pill ${l === selectedLift ? 'active' : ''}" onclick="selectLift('${l}')">${l}</div>`).join('');
   drawChart(history);
 }
 
 function selectLift(lift) {
   selectedLift = lift;
-  document.querySelectorAll('.lift-pill').forEach(p => {
-    p.classList.toggle('active', p.textContent === lift);
-  });
+  document.querySelectorAll('.lift-pill').forEach(p => p.classList.toggle('active', p.textContent === lift));
   getHistory().then(h => drawChart(h));
 }
 
@@ -851,32 +989,25 @@ function drawChart(history) {
   const title = document.getElementById('chartTitle');
   const empty = document.getElementById('chartEmpty');
   const canvas = document.getElementById('progressChart');
-
   title.textContent = selectedLift;
 
-  // Top weight per session for the selected lift
   const points = [];
+  let usedE1RM = false;
   [...history].reverse().forEach(entry => {
     const ex = (entry.exercises || []).find(e => e.name === selectedLift);
     if (!ex) return;
-    const weights = (ex.sets || []).filter(s => s.weight).map(s => parseFloat(s.weight));
-    if (!weights.length) return;
-    points.push({
-      date: new Date(entry.created_at).toLocaleDateString('en-US', { month:'short', day:'numeric' }),
-      weight: Math.max(...weights)
-    });
+    const amraps = (ex.sets || []).filter(s => s.amrap && s.weight && s.reps);
+    let val;
+    if (amraps.length) { val = Math.max(...amraps.map(s => e1rm(s.weight, s.reps))); usedE1RM = true; }
+    else { const w = (ex.sets || []).filter(s => s.weight).map(s => parseFloat(s.weight)); if (!w.length) return; val = Math.max(...w); }
+    points.push({ date: fmt(entry.created_at), val });
   });
 
   if (!points.length) {
-    canvas.style.display = 'none';
-    empty.style.display = 'block';
-    empty.textContent = 'No data yet for this lift.';
+    canvas.style.display = 'none'; empty.style.display = 'block'; empty.textContent = 'No data yet for this lift.';
     return;
   }
-
-  canvas.style.display = 'block';
-  empty.style.display = 'none';
-
+  canvas.style.display = 'block'; empty.style.display = 'none';
   if (progressChart) progressChart.destroy();
 
   progressChart = new Chart(canvas, {
@@ -884,28 +1015,17 @@ function drawChart(history) {
     data: {
       labels: points.map(p => p.date),
       datasets: [{
-        label: 'Top Weight (lb)',
-        data: points.map(p => p.weight),
-        borderColor: '#e8f542',
-        backgroundColor: 'rgba(232,245,66,0.08)',
-        borderWidth: 2,
-        pointBackgroundColor: '#e8f542',
-        pointRadius: 4,
-        tension: 0.3,
-        fill: true
+        label: usedE1RM ? 'Est. 1RM (lb)' : 'Top Weight (lb)',
+        data: points.map(p => p.val),
+        borderColor: '#e8f542', backgroundColor: 'rgba(232,245,66,0.08)',
+        borderWidth: 2, pointBackgroundColor: '#e8f542', pointRadius: 4, tension: 0.3, fill: true
       }]
     },
     options: {
       responsive: true,
       plugins: {
-        legend: { display: false },
-        tooltip: {
-          backgroundColor: '#1c1c1c',
-          titleColor: '#e8f542',
-          bodyColor: '#f0f0f0',
-          borderColor: '#252525',
-          borderWidth: 1
-        }
+        legend: { display: true, labels: { color: '#888', font: { size: 11 } } },
+        tooltip: { backgroundColor: '#1c1c1c', titleColor: '#e8f542', bodyColor: '#f0f0f0', borderColor: '#252525', borderWidth: 1 }
       },
       scales: {
         x: { ticks: { color: '#666', font: { size: 11 } }, grid: { color: '#1a1a1a' } },
@@ -920,7 +1040,7 @@ function switchTab(tab) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   document.getElementById(`screen-${tab}`).classList.add('active');
-  document.getElementById(`tab-${tab}`).classList.add('active');
+  document.getElementById(`tab-${tab}`)?.classList.add('active');
   document.getElementById('saveBtn').style.display = tab === 'log' ? 'block' : 'none';
   if (tab === 'history') renderHistory();
 }
@@ -932,8 +1052,14 @@ function showToast(msg) {
 }
 
 // ── Init ──────────────────────────────────────────────────────────
-document.getElementById('todayDate').textContent = new Date().toLocaleDateString('en-US', { weekday:'long', month:'short', day:'numeric' });
-selectDay('MEU');
+document.getElementById('todayDate').textContent = new Date().toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' });
+(async () => {
+  await getConfig();
+  setWeekPills();
+  selectDay('D1');
+  const anyTM = Object.values(config.tms).some(v => v > 0);
+  if (!anyTM) openSettings();
+})();
 
 // Register service worker for PWA caching
 if ('serviceWorker' in navigator) {
