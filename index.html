@@ -131,6 +131,11 @@
   .plate-chip.p5  { border-color: #e8f542; color: #e8f542; }
   .plate-chip.p2h { border-color: #888; color: #aaa; }
   .plate-none { font-size: 0.78rem; color: var(--muted); font-style: italic; }
+  .plate-ladder { display: flex; flex-direction: column; gap: 6px; }
+  .plate-ladder-row { display: flex; align-items: center; gap: 8px; }
+  .pl-set { font-family: 'Bebas Neue', sans-serif; font-size: 0.95rem; color: var(--muted); min-width: 34px; text-align: center; }
+  .pl-weight { font-size: 0.8rem; font-weight: 600; color: var(--text); min-width: 46px; }
+  .plate-ladder-row .plate-chips { flex: 1; }
 
   .last-session {
     padding: 6px 16px 4px; font-size: 0.72rem;
@@ -610,14 +615,7 @@ function renderLiftCard(cfg, key, history) {
   }
 
   let plateSection = '';
-  if (tm) {
-    const workW = rows.filter(r => !r.warmup && r.weight).map(r => r.weight);
-    const topW = workW.length ? Math.max(...workW) : 0;
-    plateSection = `<div class="plate-calc">
-      <div class="plate-calc-label">Plates per side · top set ${topW}lb</div>
-      <div class="plate-chips">${topW > 0 ? renderPlates(calcPlates(topW)) : '<span class="plate-none">—</span>'}</div>
-    </div>`;
-  }
+  if (tm) plateSection = `<div class="plate-calc" id="plates-${key}">${plateLadderHTML(key, state.sets)}</div>`;
 
   const setsHTML = buildLiftRows(key, state);
 
@@ -668,14 +666,7 @@ function renderAssistCard(cfg, key, history) {
   }
 
   let plateSection = '';
-  if (isBarbellLift(variation)) {
-    const ws = last ? last.sets.filter(s => s.weight).map(s => parseFloat(s.weight)) : [];
-    const bw = ws.length ? Math.max(...ws) : 0;
-    plateSection = `<div class="plate-calc">
-      <div class="plate-calc-label">Plates per side${bw > 0 ? ` · last ${bw}lb` : ''}</div>
-      <div class="plate-chips">${bw > 0 ? renderPlates(calcPlates(bw)) : '<span class="plate-none">Enter a weight</span>'}</div>
-    </div>`;
-  }
+  if (isBarbellLift(variation)) plateSection = `<div class="plate-calc" id="plates-${key}">${plateLadderHTML(key, state.sets)}</div>`;
 
   const setsHTML = buildSetRows(key, inputType, state, last);
 
@@ -723,14 +714,33 @@ function buildSetRows(key, inputType, state, last) {
   return `<div class="set-rows">${labels}${rows}</div><button class="add-set-btn" onclick="addSet('${key}', '${inputType}')">+ Add Set</button>`;
 }
 
+// Group consecutive sets by weight so we only show plates when they change
+function plateGroups(sets) {
+  const groups = [];
+  let workIdx = 0;
+  (sets || []).forEach(s => {
+    const w = parseFloat(s.weight);
+    const label = s.warmup ? 'W' : String(++workIdx);
+    if (!w) return;
+    const last = groups[groups.length - 1];
+    if (last && last.weight === w) last.labels.push(label);
+    else groups.push({ weight: w, labels: [label], plates: calcPlates(w) });
+  });
+  return groups;
+}
+function plateLadderHTML(key, sets) {
+  const groups = plateGroups(sets);
+  if (!groups.length) return `<div class="plate-calc-label">Plates per side</div><span class="plate-none">Enter a weight</span>`;
+  const rows = groups.map(g => {
+    const lab = g.labels.length > 1 ? `${g.labels[0]}–${g.labels[g.labels.length - 1]}` : g.labels[0];
+    return `<div class="plate-ladder-row"><span class="pl-set">${lab}</span><span class="pl-weight">${g.weight}</span><span class="plate-chips">${renderPlates(g.plates)}</span></div>`;
+  }).join('');
+  return `<div class="plate-calc-label">Plates per side · per set</div><div class="plate-ladder">${rows}</div>`;
+}
 function updatePlateDisplay(key) {
-  const card = document.getElementById(`excard-${key}`);
-  if (!card) return;
-  const chips = card.querySelector('.plate-chips');
-  if (!chips) return;
-  let w = 0;
-  card.querySelectorAll('.w-input').forEach(inp => { const v = parseFloat(inp.value); if (v > w) w = v; });
-  if (w > 0) chips.innerHTML = renderPlates(calcPlates(w));
+  const el = document.getElementById(`plates-${key}`);
+  if (!el || !logState[key]) return;
+  el.innerHTML = plateLadderHTML(key, logState[key].sets);
 }
 
 function updateE1RM(key) {
