@@ -67,7 +67,7 @@
   .screen.active { display: block; }
 
   .day-selector {
-    display: flex; gap: 8px; margin-bottom: 20px;
+    display: flex; gap: 8px; margin-bottom: 10px;
     overflow-x: auto; padding-bottom: 4px; scrollbar-width: none;
   }
   .day-selector::-webkit-scrollbar { display: none; }
@@ -79,6 +79,8 @@
   }
   .day-pill.active { background: var(--accent); border-color: var(--accent); color: #000; font-weight: 600; }
 
+  .day-full { font-size: 0.78rem; color: var(--muted); margin: 0 2px 18px; letter-spacing: 0.02em; }
+
   .ex-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 12px; overflow: hidden; }
 
   .ex-card-header {
@@ -89,21 +91,31 @@
   .ex-card-type { font-size: 0.68rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-top: 2px; }
   .ex-target { font-size: 0.72rem; color: var(--accent); font-weight: 600; text-align: right; white-space: nowrap; margin-left: 8px; }
 
-  /* Equipment toggle */
-  .equip-toggle {
-    display: flex; gap: 0; padding: 8px 16px; border-bottom: 1px solid var(--border);
+  /* Variation dropdown */
+  .variation-wrap { padding: 10px 16px 4px; position: relative; }
+  .variation-select {
+    width: 100%; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; color: var(--text); font-family: 'DM Sans', sans-serif;
+    font-size: 0.9rem; font-weight: 600; padding: 10px 34px 10px 12px;
+    cursor: pointer; -webkit-appearance: none; appearance: none;
   }
+  .variation-select:focus { outline: none; border-color: var(--accent); }
+  .variation-wrap::after {
+    content: '▾'; position: absolute; right: 28px; top: 50%; transform: translateY(-30%);
+    color: var(--accent); font-size: 0.9rem; pointer-events: none;
+  }
+
+  /* Equipment toggle (legacy — retained for old-program history edits) */
+  .equip-toggle { display: flex; gap: 0; padding: 8px 16px; border-bottom: 1px solid var(--border); }
   .equip-btn {
     flex: 1; background: var(--surface); border: 1px solid var(--border);
     color: var(--muted); font-family: 'DM Sans', sans-serif;
     font-size: 0.72rem; font-weight: 500; padding: 6px 8px;
     cursor: pointer; transition: all 0.15s; text-transform: uppercase; letter-spacing: 0.05em;
   }
-  .equip-btn:first-child { border-radius: 6px 0 0 6px; }
-  .equip-btn:last-child { border-radius: 0 6px 6px 0; margin-left: -1px; }
-  .equip-btn.active { background: var(--card); color: var(--text); border: 2px solid var(--accent); z-index: 1; position: relative; }
+  .equip-btn.active { background: var(--card); color: var(--text); border: 2px solid var(--accent); }
 
-  /* Suggestion bar */
+  /* Suggestion / hint bar */
   .suggestion-bar {
     padding: 8px 16px; border-bottom: 1px solid var(--border);
     display: flex; justify-content: space-between; align-items: center; gap: 8px;
@@ -223,6 +235,7 @@
   .history-body.open { display: block; }
   .history-ex { margin-bottom: 12px; }
   .history-ex-name { font-weight: 600; font-size: 0.85rem; margin-bottom: 4px; }
+  .history-ex-slot { color: var(--muted); font-size: 0.7rem; font-weight: 400; }
   .history-sets { display: flex; flex-wrap: wrap; gap: 6px; }
   .history-set-chip { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 4px 10px; font-size: 0.78rem; color: #c0c0c0; }
   .history-set-chip.done { border-color: var(--accent); color: var(--accent); }
@@ -256,19 +269,6 @@
   .chart-title { font-family: 'Bebas Neue', sans-serif; font-size: 1.1rem; letter-spacing: 0.05em; color: var(--accent); margin-bottom: 12px; }
   .chart-empty { text-align: center; padding: 30px; color: var(--muted); font-size: 0.82rem; }
 
-  .week-indicator {
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: 8px; padding: 10px 14px; margin-bottom: 16px;
-    display: none; align-items: center; justify-content: space-between;
-  }
-  .week-indicator .label { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
-  .week-indicator .value { font-family: 'Bebas Neue', sans-serif; font-size: 1.1rem; color: var(--accent); letter-spacing: 0.04em; }
-  .week-toggle {
-    background: var(--card); border: 1px solid var(--border); border-radius: 6px;
-    color: var(--muted); font-size: 0.72rem; padding: 4px 10px; cursor: pointer;
-    font-family: 'DM Sans', sans-serif; text-transform: uppercase; letter-spacing: 0.05em;
-  }
-
   .toast {
     position: fixed; top: 70px; left: 50%;
     transform: translateX(-50%) translateY(-10px);
@@ -292,18 +292,12 @@
 <!-- LOG SCREEN -->
 <div class="screen active" id="screen-log">
   <div class="day-selector" id="daySelector">
-    <div class="day-pill active" onclick="selectDay('A')" id="pill-A">Day A — Push</div>
-    <div class="day-pill" onclick="selectDay('B')" id="pill-B">Day B — Pull</div>
-    <div class="day-pill" onclick="selectDay('C')" id="pill-C">Day C — Power</div>
-    <div class="day-pill" onclick="selectDay('D')" id="pill-D">Day D — Core</div>
+    <div class="day-pill active" onclick="selectDay('MEU')" id="pill-MEU">ME Upper</div>
+    <div class="day-pill" onclick="selectDay('DEL')" id="pill-DEL">DE Lower</div>
+    <div class="day-pill" onclick="selectDay('RU')" id="pill-RU">Rep Upper</div>
+    <div class="day-pill" onclick="selectDay('MEL')" id="pill-MEL">ME Lower</div>
   </div>
-  <div class="week-indicator" id="weekIndicator">
-    <div>
-      <div class="label">Power Day Focus</div>
-      <div class="value" id="weekFocusLabel">Week Odd — Deadlift Heavy</div>
-    </div>
-    <button class="week-toggle" onclick="toggleWeek()">Switch</button>
-  </div>
+  <div class="day-full" id="dayFull"></div>
   <div id="exerciseArea"></div>
 </div>
 
@@ -352,85 +346,97 @@ const HEADERS = {
 const RACK = [45, 35, 25, 10, 5, 5, 5, 5, 2.5, 2.5];
 const BAR_WEIGHT = 45;
 
-// Lifts that auto-progress +5lb
-const PROGRESSIVE_LIFTS = ['Bench Press', 'Overhead Press', 'Barbell Row', 'Back Squat (Heavy)', 'Back Squat (Moderate)', 'Deadlift (Heavy)', 'Deadlift (Moderate)', 'Romanian Deadlift'];
+// Barbell movements — drive the plate calculator
+const BARBELL_KEYS = [
+  'barbell bench','incline barbell','close-grip bench','floor press','board press',
+  'overhead press','back squat','front squat','box squat','safety-bar squat',
+  'deadlift','trap-bar','rack pull','barbell row','good morning'
+];
+function isBarbellLift(name) {
+  const n = (name || '').toLowerCase();
+  if (/\bdb\b|dumbbell/.test(n)) return false;
+  return BARBELL_KEYS.some(k => n.includes(k));
+}
 
-// Lifts that are "heavy" versions and drive moderate calc
-const HEAVY_TO_MODERATE = {
-  'Back Squat (Moderate)': 'Back Squat (Heavy)',
-  'Deadlift (Moderate)': 'Deadlift (Heavy)'
-};
-
-// Main lifts for progress chart
-const MAIN_LIFTS = ['Bench Press', 'Overhead Press', 'Barbell Row', 'Back Squat (Heavy)', 'Deadlift (Heavy)', 'Romanian Deadlift'];
-
-// ── Program ──────────────────────────────────────────────────────
+// ── Program: Westside for Skinny Bastards, Part 3 (4-day) ─────────
+// Each slot offers a rotating menu of exercise variations. The app
+// remembers weights per *variation* (not per slot), so a lift you did
+// three weeks ago is recalled the moment you pick it again.
 const DAYS = {
-  A: {
-    label: 'Day A — Push',
-    exercises: [
-      { name: 'Bench Press',       target: '4 × 6',  type: 'Main',      sets: 4 },
-      { name: 'Overhead Press',    target: '3 × 8',  type: 'Main',      sets: 3 },
-      { name: 'Close-Grip Bench',  target: '3 × 10', type: 'Accessory', sets: 3 },
-      { name: 'Front Raise',       target: '3 × 12', type: 'Accessory', sets: 3 },
-      { name: 'Push-Ups',          target: '2 × 15', type: 'Finisher',  sets: 2 },
+  MEU: {
+    label: 'ME Upper', full: 'Day 1 — Max-Effort Upper Body', badge: 'a',
+    slots: [
+      { slot: 'ME Press', type: 'Max Effort', target: 'Work up to 3–5RM', inputType: 'max_effort', sets: 5,
+        options: ['Flat Barbell Bench','Incline Barbell Bench','Close-Grip Bench','Floor Press','2-Board Press','Weighted Dip','Flat DB Press','Incline DB Press'] },
+      { slot: 'Supplemental Press', type: 'Supplemental', target: '3 × max reps', inputType: 'weight_reps', sets: 3,
+        options: ['Flat DB Bench','Incline DB Bench','Dips','Push-Ups'] },
+      { slot: 'Pull (Horizontal / Vertical)', type: 'Assistance', target: '4 × 8–12', inputType: 'weight_reps', sets: 4,
+        options: ['Barbell Row','1-Arm DB Row','Chest-Supported Row','Seated Cable Row','Lat Pulldown','Pull-Ups'] },
+      { slot: 'Rear Delts / Upper Back', type: 'Assistance', target: '3 × 12–15', inputType: 'weight_reps', sets: 3,
+        options: ['Face Pulls','Rear Delt Flye','Band Pull-Apart'] },
+      { slot: 'Biceps', type: 'Assistance', target: '3 × 8–12', inputType: 'weight_reps', sets: 3,
+        options: ['Barbell Curl','DB Curl','Hammer Curl','Incline DB Curl'] },
     ]
   },
-  B: {
-    label: 'Day B — Pull',
-    exercises: [
-      { name: 'Barbell Row',       target: '4 × 6',  type: 'Main',      sets: 4 },
-      { name: 'Pull-Ups / Chin-Ups', target: '3 × 6–8', type: 'Main',  sets: 3 },
-      { name: 'Barbell Curl',      target: '3 × 10', type: 'Accessory', sets: 3 },
-      { name: 'Face Pulls',        target: '3 × 15', type: 'Accessory', sets: 3 },
-      { name: 'Barbell Shrug',     target: '3 × 12', type: 'Accessory', sets: 3 },
+  DEL: {
+    label: 'DE Lower', full: 'Day 2 — Dynamic-Effort Lower Body', badge: 'b',
+    slots: [
+      { slot: 'Jump Training', type: 'Dynamic Effort', target: '6 × 2–3 (explosive)', inputType: 'reps', sets: 6,
+        options: ['Box Jump','Broad Jump','Squat Jump','Vertical Jump'] },
+      { slot: 'Unilateral', type: 'Main', target: '3 × 8–12 / leg', inputType: 'weight_reps', sets: 3,
+        options: ['Bulgarian Split Squat','Reverse Lunge','Walking Lunge','Step-Up'] },
+      { slot: 'Hip Extension / Posterior', type: 'Assistance', target: '3 × 8–12', inputType: 'weight_reps', sets: 3,
+        options: ['Romanian Deadlift','Glute-Ham Raise','Pull-Through','45° Back Raise','Good Morning'] },
+      { slot: 'Weighted Abs', type: 'Core', target: '3–4 × 10–15', inputType: 'weight_reps', sets: 3,
+        options: ['Hanging Leg Raise','Cable Crunch','Ab Wheel','Weighted Decline Sit-Up'] },
     ]
   },
-  C: {
-    exercises: {
-      odd: [
-        { name: 'Deadlift (Heavy)',        target: '4 × 4', type: 'Main',      sets: 4 },
-        { name: 'Back Squat (Moderate)',   target: '3 × 5', type: 'Main',      sets: 3 },
-        { name: 'Romanian Deadlift',       target: '3 × 8', type: 'Accessory', sets: 3 },
-        { name: 'KB Swings',               target: '3 × 15',type: 'Accessory', sets: 3 },
-        { name: 'Farmer / Suitcase Carry', target: '3 × 20yd', type: 'Finisher', sets: 3 },
-      ],
-      even: [
-        { name: 'Back Squat (Heavy)',      target: '4 × 4', type: 'Main',      sets: 4 },
-        { name: 'Deadlift (Moderate)',     target: '3 × 5', type: 'Main',      sets: 3 },
-        { name: 'Romanian Deadlift',       target: '3 × 8', type: 'Accessory', sets: 3 },
-        { name: 'KB Swings',               target: '3 × 15',type: 'Accessory', sets: 3 },
-        { name: 'Farmer / Suitcase Carry', target: '3 × 20yd', type: 'Finisher', sets: 3 },
-      ]
-    }
+  RU: {
+    label: 'Rep Upper', full: 'Day 3 — Repetition Upper Body', badge: 'c',
+    slots: [
+      { slot: 'Repetition Press', type: 'Repetition', target: '3 × max reps · 60s rest', inputType: 'weight_reps', sets: 3,
+        options: ['Flat DB Bench','Incline DB Bench','Push-Ups','Dips'] },
+      { slot: 'Pull (Horizontal / Vertical)', type: 'Assistance', target: '3–4 × 8–12', inputType: 'weight_reps', sets: 4,
+        options: ['1-Arm DB Row','Chest-Supported Row','Seated Cable Row','Lat Pulldown','Pull-Ups','Barbell Row'] },
+      { slot: 'Medial / Rear Delts', type: 'Assistance', target: '3–4 × 8–15', inputType: 'weight_reps', sets: 3,
+        options: ['Lateral Raise','Rear Delt Flye','Face Pulls'] },
+      { slot: 'Traps / Upper Back', type: 'Assistance', target: '3–4 × 8–15', inputType: 'weight_reps', sets: 3,
+        options: ['DB Shrug','Barbell Shrug','Power Shrug'] },
+      { slot: 'Biceps', type: 'Assistance', target: '3–4 × 8–15', inputType: 'weight_reps', sets: 3,
+        options: ['DB Curl','Barbell Curl','Hammer Curl','Incline DB Curl'] },
+    ]
   },
-  D: {
-    label: 'Day D — Core',
-    exercises: [
-      // Circuit 1
-      { name: 'Dead Bugs',          target: '2–3 × 10/side', type: 'Circuit 1', sets: 3, inputType: 'per_side' },
-      { name: 'Forearm Plank',      target: '2–3 × 30–45s',  type: 'Circuit 1', sets: 3, inputType: 'timed' },
-      { name: 'Bird Dogs',          target: '2–3 × 8/side',  type: 'Circuit 1', sets: 3, inputType: 'per_side' },
-      // Circuit 2
-      { name: 'Hollow Body Hold',   target: '2–3 × 20–30s',  type: 'Circuit 2', sets: 3, inputType: 'timed' },
-      { name: 'Side Plank',         target: '2–3 × 30s/side',type: 'Circuit 2', sets: 3, inputType: 'timed_per_side' },
-      { name: 'Russian Twists',     target: '2–3 × 15/side', type: 'Circuit 2', sets: 3, inputType: 'per_side' },
-      // Optional loaded
-      { name: 'Pallof Press',       target: '2–3 × 10/side', type: 'Optional', sets: 3, inputType: 'per_side' },
-      { name: 'Decline Sit-Ups',    target: '2–3 × 12',      type: 'Optional', sets: 3, inputType: 'weight_reps' },
+  MEL: {
+    label: 'ME Lower', full: 'Day 4 — Max-Effort Lower Body', badge: 'd',
+    slots: [
+      { slot: 'ME Squat / Deadlift', type: 'Max Effort', target: 'Work up to 5RM', inputType: 'max_effort', sets: 5,
+        options: ['Box Squat','Back Squat','Front Squat','Safety-Bar Squat','Deadlift','Trap-Bar Deadlift','Rack Pull'] },
+      { slot: 'Unilateral', type: 'Main', target: '3 × 8–12 / leg', inputType: 'weight_reps', sets: 3,
+        options: ['Bulgarian Split Squat','Reverse Lunge','Walking Lunge','Step-Up'] },
+      { slot: 'Hip Extension / Posterior', type: 'Assistance', target: '3 × 8–12', inputType: 'weight_reps', sets: 3,
+        options: ['Romanian Deadlift','Glute-Ham Raise','Pull-Through','45° Back Raise','Good Morning'] },
+      { slot: 'Weighted Abs', type: 'Core', target: '3–4 × 10–15', inputType: 'weight_reps', sets: 3,
+        options: ['Hanging Leg Raise','Cable Crunch','Ab Wheel','Weighted Decline Sit-Up'] },
     ]
   }
 };
 
 // ── State ────────────────────────────────────────────────────────
-let currentDay = 'A';
-let currentWeek = 'odd';
-let logState = {};
-let equipState = {}; // { exName: 'barbell' | 'dumbbell' }
+let currentDay = 'MEU';
+let logState = {};        // { slotKey: { sets:[...], note } }
+let variationState = {};  // { slotKey: chosenVariation }
 let editingId = null;
 let historyCache = null;
 let progressChart = null;
-let selectedLift = MAIN_LIFTS[0];
+let selectedLift = null;
+
+function slotKey(day, slot) { return day + '_' + slot.replace(/[^a-z0-9]/gi, '_'); }
+
+function blankSetFor(inputType) {
+  if (inputType === 'timed' || inputType === 'timed_per_side') return { duration: '', done: false };
+  if (inputType === 'per_side' || inputType === 'reps') return { reps: '', done: false };
+  return { weight: '', reps: '', done: false };
+}
 
 // ── Supabase ─────────────────────────────────────────────────────
 async function dbFetch(path, options = {}) {
@@ -446,6 +452,16 @@ async function getHistory(force = false) {
     historyCache = await dbFetch('workouts?order=created_at.desc');
     return historyCache;
   } catch(e) { console.error('Failed to load history', e); return []; }
+}
+
+// Most recent logged session of a given exercise variation (across any day)
+function findLastForName(history, name) {
+  for (const entry of history) {
+    if (editingId && entry.id === editingId) continue;
+    const ex = (entry.exercises || []).find(e => e.name === name);
+    if (ex) return { ex, date: entry.created_at };
+  }
+  return null;
 }
 
 // ── Plate Calculator ─────────────────────────────────────────────
@@ -472,232 +488,141 @@ function renderPlates(plates) {
   return plates.map(p => `<div class="plate-chip ${colorClass[p] || ''}">${p}</div>`).join('');
 }
 
-// ── Weight Suggestion ─────────────────────────────────────────────
-async function getSuggestedWeight(exName, lastSession) {
-  // Check if this is a moderate lift driven by a heavy lift
-  const heavyName = HEAVY_TO_MODERATE[exName];
-  if (heavyName) {
-    // Find most recent session where the heavy version was logged
-    const history = await getHistory();
-    for (const entry of history) {
-      if (editingId && entry.id === editingId) continue;
-      const heavyEx = entry.exercises.find(e => e.name === heavyName);
-      if (heavyEx) {
-        const heavyWeights = heavyEx.sets.filter(s => s.weight).map(s => parseFloat(s.weight));
-        if (heavyWeights.length) {
-          const maxHeavy = Math.max(...heavyWeights);
-          return Math.round(maxHeavy * 0.70 / 5) * 5; // 70%, rounded to nearest 5
-        }
-      }
-    }
-    return null;
+// ── State helpers ─────────────────────────────────────────────────
+function getState(key, sets, inputType) {
+  if (!logState[key]) {
+    logState[key] = { sets: Array.from({length: sets}, () => ({...blankSetFor(inputType)})), note: '' };
   }
-
-  if (!lastSession || !PROGRESSIVE_LIFTS.includes(exName)) return null;
-
-  const allDone = lastSession.sets.every(s => s.done);
-  const weights = lastSession.sets.filter(s => s.weight).map(s => parseFloat(s.weight));
-  if (!weights.length) return null;
-  const lastWeight = Math.max(...weights);
-  return allDone ? lastWeight + 5 : lastWeight;
-}
-
-// ── Program Helpers ───────────────────────────────────────────────
-function getExercises(day) {
-  if (day === 'C') return DAYS.C.exercises[currentWeek];
-  return DAYS[day].exercises;
-}
-
-function getState(exName, sets, inputType) {
-  if (!logState[exName]) {
-    const blankSet = inputType === 'timed' ? { duration: '', done: false }
-      : inputType === 'per_side' ? { reps: '', done: false }
-      : inputType === 'timed_per_side' ? { duration: '', done: false }
-      : { weight: '', reps: '', done: false };
-    logState[exName] = { sets: Array.from({length: sets}, () => ({...blankSet})), note: '' };
-  }
-  return logState[exName];
-}
-
-function getEquip(exName) {
-  return equipState[exName] || 'barbell';
+  return logState[key];
 }
 
 // ── Render Exercises ──────────────────────────────────────────────
 async function renderExercises() {
   const area = document.getElementById('exerciseArea');
-  const exercises = getExercises(currentDay);
   area.innerHTML = '<div style="padding:20px;text-align:center;color:var(--muted);font-size:0.85rem;">Loading…</div>';
-
   const history = await getHistory();
-
-  // Get last session for each exercise
-  const lastSessions = exercises.map(ex => {
-    for (const entry of history) {
-      if (editingId && entry.id === editingId) continue;
-      const found = entry.exercises.find(e => e.name === ex.name);
-      if (found) return found;
-    }
-    return null;
-  });
-
-  // Get suggestions
-  const suggestions = await Promise.all(exercises.map((ex, i) => getSuggestedWeight(ex.name, lastSessions[i])));
-
   area.innerHTML = '';
 
-  exercises.forEach((ex, exIdx) => {
-    const inputType = ex.inputType || 'weight_reps';
-    const isCore = inputType !== 'weight_reps';
-    const state = getState(ex.name, ex.sets, inputType);
-    const last = lastSessions[exIdx];
-    const suggested = suggestions[exIdx];
-    const equip = getEquip(ex.name);
-    const isBarbell = equip === 'barbell';
+  const day = DAYS[currentDay];
+  day.slots.forEach(cfg => {
+    const key = slotKey(currentDay, cfg.slot);
+    const inputType = cfg.inputType || 'weight_reps';
+    if (!variationState[key]) variationState[key] = cfg.options[0];
+    const variation = variationState[key];
+    const state = getState(key, cfg.sets, inputType);
 
-    const card = document.createElement('div');
-    card.className = 'ex-card';
-    card.id = `excard-${ex.name.replace(/[^a-z0-9]/gi,'_')}`;
+    const lastInfo = findLastForName(history, variation);
+    const last = lastInfo ? lastInfo.ex : null;
+    const dateStr = lastInfo ? new Date(lastInfo.date).toLocaleDateString('en-US', { month:'short', day:'numeric' }) : '';
 
-    // Last session hint
+    // Variation dropdown (only when there's a real choice)
+    let dropdown = '';
+    if (cfg.options.length > 1) {
+      dropdown = `<div class="variation-wrap"><select class="variation-select" onchange="selectVariation('${key}', this.value)">`
+        + cfg.options.map(o => `<option ${o === variation ? 'selected' : ''}>${o}</option>`).join('')
+        + `</select></div>`;
+    }
+
+    // Max-effort top-set hint
+    let meHint = '';
+    if (inputType === 'max_effort' && last) {
+      const wsets = last.sets.filter(s => s.weight).map(s => ({ w: parseFloat(s.weight), r: s.reps }));
+      if (wsets.length) {
+        const top = wsets.reduce((a,b) => b.w > a.w ? b : a);
+        meHint = `<div class="suggestion-bar"><div class="suggestion-text">Last top set → <span>${top.w} lb × ${top.r || '?'}</span></div></div>`;
+      }
+    }
+
+    // Last-session recall hint
     let lastHint = '';
-    if (last && !isCore) {
-      const summary = last.sets.filter(s => s.weight).map(s => `${s.weight}lb×${s.reps||'?'}`).join(', ');
-      if (summary) lastHint = `<div class="last-session">Last: ${summary}</div>`;
-    } else if (last && isCore) {
-      const summary = last.sets.map(s => {
-        if (s.duration) return `${s.duration}s`;
-        if (s.reps) return `${s.reps}/side`;
-        return null;
-      }).filter(Boolean).join(', ');
-      if (summary) lastHint = `<div class="last-session">Last: ${summary}</div>`;
+    if (last) {
+      let summary = '';
+      if (inputType === 'reps') summary = last.sets.filter(s => s.reps).map(s => `${s.reps}`).join(', ');
+      else if (inputType === 'timed' || inputType === 'timed_per_side') summary = last.sets.filter(s => s.duration).map(s => `${s.duration}s`).join(', ');
+      else if (inputType === 'per_side') summary = last.sets.filter(s => s.reps).map(s => `${s.reps}/side`).join(', ');
+      else summary = last.sets.filter(s => s.weight).map(s => `${s.weight}×${s.reps || '?'}`).join(', ');
+      if (summary) lastHint = `<div class="last-session">Last ${dateStr}: ${summary}</div>`;
     }
 
-    // Suggestion bar (weight-based lifts only)
-    let suggBar = '';
-    if (suggested !== null && !isCore) {
-      const isModerate = !!HEAVY_TO_MODERATE[ex.name];
-      const label = isModerate
-        ? `Moderate target (70%): <span>${suggested} lb</span>`
-        : (last && last.sets.every(s => s.done)
-            ? `Last session complete → <span>${suggested} lb</span>`
-            : `Same as last → <span>${suggested} lb</span>`);
-      suggBar = `<div class="suggestion-bar"><div class="suggestion-text">${label}</div></div>`;
-    }
-
-    // Plate calc (barbell only, non-core)
+    // Plate calculator (barbell movements)
     let plateSection = '';
-    if (isBarbell && suggested !== null && !isCore) {
-      const plates = calcPlates(suggested);
+    if (isBarbellLift(variation)) {
+      const weights = last ? last.sets.filter(s => s.weight).map(s => parseFloat(s.weight)) : [];
+      const baseW = weights.length ? Math.max(...weights) : 0;
       plateSection = `<div class="plate-calc">
-        <div class="plate-calc-label">Plates per side (suggested)</div>
-        <div class="plate-chips">${renderPlates(plates)}</div>
+        <div class="plate-calc-label">Plates per side${baseW > 0 ? ` · last ${baseW}lb` : ''}</div>
+        <div class="plate-chips">${baseW > 0 ? renderPlates(calcPlates(baseW)) : '<span class="plate-none">Enter a weight</span>'}</div>
       </div>`;
     }
 
-    // Equipment toggle (non-core only)
-    const equipToggle = isCore ? '' : `<div class="equip-toggle">
-      <button class="equip-btn ${isBarbell ? 'active' : ''}" onclick="setEquip('${ex.name}', 'barbell')">🏋️ Barbell</button>
-      <button class="equip-btn ${!isBarbell ? 'active' : ''}" onclick="setEquip('${ex.name}', 'dumbbell')">💪 Dumbbell</button>
-    </div>`;
+    const setsHTML = buildSetRows(key, inputType, state, last);
 
-    // Sets — render based on inputType
-    let setsHTML = '';
-    if (inputType === 'timed') {
-      setsHTML = `<div class="set-rows">
-        <div class="set-labels">
-          <div class="set-label"></div>
-          <div class="set-label" style="grid-column:span 2">Duration (sec)</div>
-          <div class="set-label"></div>
-        </div>`;
-      state.sets.forEach((s, i) => {
-        const lastDur = last?.sets[i]?.duration || '';
-        setsHTML += `<div class="set-row">
-          <div class="set-num">${i+1}</div>
-          <input class="set-input" type="number" inputmode="numeric" placeholder="${lastDur || 'sec'}"
-            value="${s.duration||''}" onchange="updateSet('${ex.name}', ${i}, 'duration', this.value)"
-            style="grid-column:span 2" />
-          <button class="set-check ${s.done ? 'done' : ''}" onclick="toggleDone('${ex.name}', ${i}, this)">${s.done ? '✓' : ''}</button>
-        </div>`;
-      });
-    } else if (inputType === 'timed_per_side') {
-      setsHTML = `<div class="set-rows">
-        <div class="set-labels">
-          <div class="set-label"></div>
-          <div class="set-label" style="grid-column:span 2">Duration/side (sec)</div>
-          <div class="set-label"></div>
-        </div>`;
-      state.sets.forEach((s, i) => {
-        const lastDur = last?.sets[i]?.duration || '';
-        setsHTML += `<div class="set-row">
-          <div class="set-num">${i+1}</div>
-          <input class="set-input" type="number" inputmode="numeric" placeholder="${lastDur || 'sec'}"
-            value="${s.duration||''}" onchange="updateSet('${ex.name}', ${i}, 'duration', this.value)"
-            style="grid-column:span 2" />
-          <button class="set-check ${s.done ? 'done' : ''}" onclick="toggleDone('${ex.name}', ${i}, this)">${s.done ? '✓' : ''}</button>
-        </div>`;
-      });
-    } else if (inputType === 'per_side') {
-      setsHTML = `<div class="set-rows">
-        <div class="set-labels">
-          <div class="set-label"></div>
-          <div class="set-label" style="grid-column:span 2">Reps / side</div>
-          <div class="set-label"></div>
-        </div>`;
-      state.sets.forEach((s, i) => {
-        const lastReps = last?.sets[i]?.reps || '';
-        setsHTML += `<div class="set-row">
-          <div class="set-num">${i+1}</div>
-          <input class="set-input" type="number" inputmode="numeric" placeholder="${lastReps || 'reps'}"
-            value="${s.reps||''}" onchange="updateSet('${ex.name}', ${i}, 'reps', this.value)"
-            style="grid-column:span 2" />
-          <button class="set-check ${s.done ? 'done' : ''}" onclick="toggleDone('${ex.name}', ${i}, this)">${s.done ? '✓' : ''}</button>
-        </div>`;
-      });
-    } else {
-      // Standard weight × reps
-      setsHTML = `<div class="set-rows">
-        <div class="set-labels">
-          <div class="set-label"></div>
-          <div class="set-label">Weight (lb)</div>
-          <div class="set-label">Reps</div>
-          <div class="set-label"></div>
-        </div>`;
-      state.sets.forEach((s, i) => {
-        const ph = suggested !== null ? `${suggested}` : (last && last.sets[i]?.weight ? `${last.sets[i].weight}` : 'lbs');
-        setsHTML += `<div class="set-row">
-          <div class="set-num">${i+1}</div>
-          <input class="set-input" type="number" inputmode="decimal" placeholder="${ph}"
-            value="${s.weight}" onchange="updateSet('${ex.name}', ${i}, 'weight', this.value);updatePlateDisplay('${ex.name}')" />
-          <input class="set-input" type="number" inputmode="numeric" placeholder="reps"
-            value="${s.reps}" onchange="updateSet('${ex.name}', ${i}, 'reps', this.value)" />
-          <button class="set-check ${s.done ? 'done' : ''}" onclick="toggleDone('${ex.name}', ${i}, this)">${s.done ? '✓' : ''}</button>
-        </div>`;
-      });
-    }
-
-    setsHTML += `</div><button class="add-set-btn" onclick="addSet('${ex.name}', '${inputType}')">+ Add Set</button>`;
-
+    const card = document.createElement('div');
+    card.className = 'ex-card';
+    card.id = `excard-${key}`;
     card.innerHTML = `
       <div class="ex-card-header">
-        <div><div class="ex-card-name">${ex.name}</div><div class="ex-card-type">${ex.type}</div></div>
-        <div class="ex-target">${ex.target}</div>
+        <div><div class="ex-card-name">${dropdown ? cfg.slot : variation}</div><div class="ex-card-type">${cfg.type}</div></div>
+        <div class="ex-target">${cfg.target}</div>
       </div>
-      ${equipToggle}
+      ${dropdown}
+      ${meHint}
       ${lastHint}
-      ${suggBar}
       ${plateSection}
       ${setsHTML}
-      <textarea class="notes-area" placeholder="Notes…" onchange="updateNote('${ex.name}', this.value)">${state.note}</textarea>
+      <textarea class="notes-area" placeholder="Notes…" onchange="updateNote('${key}', this.value)">${state.note}</textarea>
     `;
-
     area.appendChild(card);
   });
 }
 
-function updatePlateDisplay(exName) {
-  // Recalc plates based on first filled weight input
-  const card = document.getElementById(`excard-${exName.replace(/[^a-z0-9]/gi,'_')}`);
+function buildSetRows(key, inputType, state, last) {
+  const check = (s, i) => `<button class="set-check ${s.done ? 'done' : ''}" onclick="toggleDone('${key}', ${i}, this)">${s.done ? '✓' : ''}</button>`;
+  let labels = '', rows = '';
+
+  if (inputType === 'reps') {
+    labels = `<div class="set-labels"><div class="set-label"></div><div class="set-label" style="grid-column:span 2">Reps</div><div class="set-label"></div></div>`;
+    state.sets.forEach((s, i) => {
+      const ph = last?.sets[i]?.reps || 'reps';
+      rows += `<div class="set-row"><div class="set-num">${i+1}</div>
+        <input class="set-input" type="number" inputmode="numeric" placeholder="${ph}" value="${s.reps || ''}" onchange="updateSet('${key}', ${i}, 'reps', this.value)" style="grid-column:span 2" />
+        ${check(s, i)}</div>`;
+    });
+  } else if (inputType === 'timed' || inputType === 'timed_per_side') {
+    const lbl = inputType === 'timed_per_side' ? 'Duration/side (sec)' : 'Duration (sec)';
+    labels = `<div class="set-labels"><div class="set-label"></div><div class="set-label" style="grid-column:span 2">${lbl}</div><div class="set-label"></div></div>`;
+    state.sets.forEach((s, i) => {
+      const ph = last?.sets[i]?.duration || 'sec';
+      rows += `<div class="set-row"><div class="set-num">${i+1}</div>
+        <input class="set-input" type="number" inputmode="numeric" placeholder="${ph}" value="${s.duration || ''}" onchange="updateSet('${key}', ${i}, 'duration', this.value)" style="grid-column:span 2" />
+        ${check(s, i)}</div>`;
+    });
+  } else if (inputType === 'per_side') {
+    labels = `<div class="set-labels"><div class="set-label"></div><div class="set-label" style="grid-column:span 2">Reps / side</div><div class="set-label"></div></div>`;
+    state.sets.forEach((s, i) => {
+      const ph = last?.sets[i]?.reps || 'reps';
+      rows += `<div class="set-row"><div class="set-num">${i+1}</div>
+        <input class="set-input" type="number" inputmode="numeric" placeholder="${ph}" value="${s.reps || ''}" onchange="updateSet('${key}', ${i}, 'reps', this.value)" style="grid-column:span 2" />
+        ${check(s, i)}</div>`;
+    });
+  } else {
+    // weight_reps / max_effort
+    labels = `<div class="set-labels"><div class="set-label"></div><div class="set-label">Weight (lb)</div><div class="set-label">Reps</div><div class="set-label"></div></div>`;
+    state.sets.forEach((s, i) => {
+      const wph = last?.sets[i]?.weight || 'lbs';
+      const rph = last?.sets[i]?.reps || 'reps';
+      rows += `<div class="set-row"><div class="set-num">${i+1}</div>
+        <input class="set-input" type="number" inputmode="decimal" placeholder="${wph}" value="${s.weight || ''}" onchange="updateSet('${key}', ${i}, 'weight', this.value);updatePlateDisplay('${key}')" />
+        <input class="set-input" type="number" inputmode="numeric" placeholder="${rph}" value="${s.reps || ''}" onchange="updateSet('${key}', ${i}, 'reps', this.value)" />
+        ${check(s, i)}</div>`;
+    });
+  }
+
+  return `<div class="set-rows">${labels}${rows}</div><button class="add-set-btn" onclick="addSet('${key}', '${inputType}')">+ Add Set</button>`;
+}
+
+function updatePlateDisplay(key) {
+  const card = document.getElementById(`excard-${key}`);
   if (!card) return;
   const plateChips = card.querySelector('.plate-chips');
   if (!plateChips) return;
@@ -707,56 +632,46 @@ function updatePlateDisplay(exName) {
   if (w > 0) plateChips.innerHTML = renderPlates(calcPlates(w));
 }
 
-function setEquip(exName, equip) {
-  equipState[exName] = equip;
+function selectVariation(key, value) {
+  variationState[key] = value;
   renderExercises();
 }
 
-function updateSet(exName, idx, field, val) { logState[exName].sets[idx][field] = val; }
-function updateNote(exName, val) { logState[exName].note = val; }
+function updateSet(key, idx, field, val) { logState[key].sets[idx][field] = val; }
+function updateNote(key, val) { logState[key].note = val; }
 
-function toggleDone(exName, idx, btn) {
-  logState[exName].sets[idx].done = !logState[exName].sets[idx].done;
+function toggleDone(key, idx, btn) {
+  logState[key].sets[idx].done = !logState[key].sets[idx].done;
   btn.classList.toggle('done');
-  btn.textContent = logState[exName].sets[idx].done ? '✓' : '';
+  btn.textContent = logState[key].sets[idx].done ? '✓' : '';
 }
 
-function addSet(exName, inputType) {
-  const blankSet = inputType === 'timed' ? { duration: '', done: false }
-    : inputType === 'per_side' ? { reps: '', done: false }
-    : inputType === 'timed_per_side' ? { duration: '', done: false }
-    : { weight: '', reps: '', done: false };
-  logState[exName].sets.push({...blankSet});
+function addSet(key, inputType) {
+  logState[key].sets.push({...blankSetFor(inputType)});
   renderExercises();
 }
 
-// ── Day / Week ────────────────────────────────────────────────────
+// ── Day selection ─────────────────────────────────────────────────
 function selectDay(day) {
   currentDay = day;
   document.querySelectorAll('.day-pill').forEach(p => p.classList.remove('active'));
-  document.getElementById(`pill-${day}`).classList.add('active');
-  const wi = document.getElementById('weekIndicator');
-  wi.style.display = day === 'C' ? 'flex' : 'none';
+  const pill = document.getElementById(`pill-${day}`);
+  if (pill) pill.classList.add('active');
+  document.getElementById('dayFull').textContent = DAYS[day].full;
   document.getElementById('saveBtn').style.display = 'block';
-  renderExercises();
-}
-
-function toggleWeek() {
-  currentWeek = currentWeek === 'odd' ? 'even' : 'odd';
-  document.getElementById('weekFocusLabel').textContent =
-    currentWeek === 'odd' ? 'Week Odd — Deadlift Heavy' : 'Week Even — Squat Heavy';
   renderExercises();
 }
 
 // ── Save / Edit ───────────────────────────────────────────────────
 async function saveWorkout() {
-  const exercises = getExercises(currentDay);
+  const day = DAYS[currentDay];
   const saved = [];
-  exercises.forEach(ex => {
-    const state = logState[ex.name];
+  day.slots.forEach(cfg => {
+    const key = slotKey(currentDay, cfg.slot);
+    const state = logState[key];
     if (!state) return;
     if (!state.sets.some(s => s.weight || s.reps || s.duration)) return;
-    saved.push({ name: ex.name, sets: state.sets, note: state.note, equip: getEquip(ex.name) });
+    saved.push({ slot: cfg.slot, type: cfg.type, name: variationState[key] || cfg.options[0], sets: state.sets, note: state.note });
   });
   if (!saved.length) { showToast('Log at least one set first'); return; }
 
@@ -767,15 +682,14 @@ async function saveWorkout() {
     if (editingId) {
       await dbFetch(`workouts?id=eq.${editingId}`, {
         method: 'PATCH',
-        body: JSON.stringify({ day: currentDay, week: currentDay === 'C' ? currentWeek : null, exercises: saved })
+        body: JSON.stringify({ day: currentDay, week: null, exercises: saved })
       });
       editingId = null;
-      btn.textContent = 'Save Workout';
       showToast('Workout updated ✓');
     } else {
       await dbFetch('workouts', {
         method: 'POST',
-        body: JSON.stringify({ day: currentDay, week: currentDay === 'C' ? currentWeek : null, exercises: saved })
+        body: JSON.stringify({ day: currentDay, week: null, exercises: saved })
       });
       showToast('Workout saved ✓');
     }
@@ -784,7 +698,7 @@ async function saveWorkout() {
     showToast('Save failed — check connection'); console.error(e);
   } finally {
     btn.disabled = false;
-    if (!editingId) btn.textContent = 'Save Workout';
+    btn.textContent = 'Save Workout';
   }
   logState = {}; renderExercises();
 }
@@ -793,22 +707,22 @@ async function loadForEdit(id) {
   const history = await getHistory();
   const entry = history.find(e => e.id === id);
   if (!entry) return;
+  if (!DAYS[entry.day]) { showToast('Old-program entry — view only'); return; }
+
   editingId = id;
   currentDay = entry.day;
-  if (entry.week) currentWeek = entry.week;
   logState = {};
   entry.exercises.forEach(ex => {
-    logState[ex.name] = { sets: ex.sets.map(s => ({...s})), note: ex.note || '' };
-    if (ex.equip) equipState[ex.name] = ex.equip;
+    const slot = ex.slot || ex.name;
+    const key = slotKey(currentDay, slot);
+    variationState[key] = ex.name;
+    logState[key] = { sets: ex.sets.map(s => ({...s})), note: ex.note || '' };
   });
   switchTab('log');
   document.querySelectorAll('.day-pill').forEach(p => p.classList.remove('active'));
-  document.getElementById(`pill-${currentDay}`).classList.add('active');
-  document.getElementById('weekIndicator').style.display = currentDay === 'C' ? 'flex' : 'none';
-  if (currentDay === 'C') {
-    document.getElementById('weekFocusLabel').textContent =
-      currentWeek === 'odd' ? 'Week Odd — Deadlift Heavy' : 'Week Even — Squat Heavy';
-  }
+  const pill = document.getElementById(`pill-${currentDay}`);
+  if (pill) pill.classList.add('active');
+  document.getElementById('dayFull').textContent = DAYS[currentDay].full;
   renderExercises();
   document.getElementById('saveBtn').textContent = 'Update Workout';
   showToast('Loaded for editing');
@@ -827,6 +741,12 @@ function switchHistoryTab(tab) {
   if (tab === 'progress') renderProgress();
 }
 
+function dayMeta(entry) {
+  if (DAYS[entry.day]) return { label: DAYS[entry.day].label, badge: DAYS[entry.day].badge };
+  const letter = (entry.day || '?').toString().toLowerCase();
+  return { label: `Day ${entry.day}`, badge: ['a','b','c','d'].includes(letter) ? letter : 'a' };
+}
+
 async function renderHistory() {
   const list = document.getElementById('historyList');
   list.innerHTML = `<div class="history-empty"><div class="icon">⏳</div>Loading…</div>`;
@@ -838,22 +758,21 @@ async function renderHistory() {
   }
 
   list.innerHTML = history.map((entry, idx) => {
-    const badgeClass = `badge-${entry.day.toLowerCase()}`;
-    const dayLabel = entry.day === 'C' && entry.week
-      ? `Day C · ${entry.week === 'odd' ? 'DL Heavy' : 'SQ Heavy'}`
-      : `Day ${entry.day}`;
+    const meta = dayMeta(entry);
     const dateStr = new Date(entry.created_at).toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' });
 
-    const exHTML = entry.exercises.map(ex => {
-      const setsHTML = ex.sets.map((s,i) => {
+    const exHTML = (entry.exercises || []).map(ex => {
+      const setsHTML = (ex.sets || []).map((s,i) => {
         let label = '';
         if (s.duration) label = `${s.duration}s`;
-        else if (s.weight || s.reps) label = [s.weight ? `${s.weight}lb` : '', s.reps ? `×${s.reps}` : ''].filter(Boolean).join(' ');
+        else if (s.weight) label = `${s.weight}lb${s.reps ? ` × ${s.reps}` : ''}`;
+        else if (s.reps) label = `${s.reps}`;
         if (!label) return '';
         return `<div class="history-set-chip ${s.done ? 'done' : ''}">${i+1}. ${label}</div>`;
       }).join('');
+      const slotTag = ex.slot && ex.slot !== ex.name ? ` <span class="history-ex-slot">· ${ex.slot}</span>` : '';
       return `<div class="history-ex">
-        <div class="history-ex-name">${ex.name}${ex.equip === 'dumbbell' ? ' <span style="color:var(--muted);font-size:0.7rem">(DB)</span>' : ''}</div>
+        <div class="history-ex-name">${ex.name}${slotTag}</div>
         <div class="history-sets">${setsHTML}</div>
         ${ex.note ? `<div class="history-note">${ex.note}</div>` : ''}
       </div>`;
@@ -862,7 +781,7 @@ async function renderHistory() {
     return `<div class="history-entry">
       <div class="history-entry-header" onclick="toggleHistory(${idx}, this)">
         <div><div class="history-date">${dateStr}</div></div>
-        <div class="history-day-badge ${badgeClass}">${dayLabel}</div>
+        <div class="history-day-badge badge-${meta.badge}">${meta.label}</div>
       </div>
       <div class="history-body" id="hbody-${idx}">
         ${exHTML}
@@ -889,15 +808,34 @@ async function deleteEntry(id) {
 }
 
 // ── Progress Charts ───────────────────────────────────────────────
+function chartLifts(history) {
+  const s = new Set();
+  history.forEach(e => (e.exercises || []).forEach(ex => {
+    if ((ex.sets || []).some(x => x.weight)) s.add(ex.name);
+  }));
+  return [...s].sort();
+}
+
 async function renderProgress() {
   const history = await getHistory();
-
-  // Build lift selector
+  const lifts = chartLifts(history);
   const sel = document.getElementById('liftSelector');
-  sel.innerHTML = MAIN_LIFTS.map(l =>
+  const canvas = document.getElementById('progressChart');
+  const empty = document.getElementById('chartEmpty');
+
+  if (!lifts.length) {
+    sel.innerHTML = '';
+    document.getElementById('chartTitle').textContent = 'No data yet';
+    canvas.style.display = 'none';
+    empty.style.display = 'block';
+    empty.textContent = 'Log some weighted lifts to see progress.';
+    return;
+  }
+
+  if (selectedLift === null || !lifts.includes(selectedLift)) selectedLift = lifts[0];
+  sel.innerHTML = lifts.map(l =>
     `<div class="lift-pill ${l === selectedLift ? 'active' : ''}" onclick="selectLift('${l}')">${l}</div>`
   ).join('');
-
   drawChart(history);
 }
 
@@ -916,12 +854,12 @@ function drawChart(history) {
 
   title.textContent = selectedLift;
 
-  // Extract data points — max weight per session
+  // Top weight per session for the selected lift
   const points = [];
   [...history].reverse().forEach(entry => {
-    const ex = entry.exercises.find(e => e.name === selectedLift);
+    const ex = (entry.exercises || []).find(e => e.name === selectedLift);
     if (!ex) return;
-    const weights = ex.sets.filter(s => s.weight && s.done).map(s => parseFloat(s.weight));
+    const weights = (ex.sets || []).filter(s => s.weight).map(s => parseFloat(s.weight));
     if (!weights.length) return;
     points.push({
       date: new Date(entry.created_at).toLocaleDateString('en-US', { month:'short', day:'numeric' }),
@@ -995,14 +933,13 @@ function showToast(msg) {
 
 // ── Init ──────────────────────────────────────────────────────────
 document.getElementById('todayDate').textContent = new Date().toLocaleDateString('en-US', { weekday:'long', month:'short', day:'numeric' });
-selectDay('A');
+selectDay('MEU');
 
 // Register service worker for PWA caching
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/gym-log/sw.js')
+    navigator.serviceWorker.register('sw.js')
       .then(reg => {
-        // Auto-update: when a new SW is waiting, activate it
         reg.addEventListener('updatefound', () => {
           const newWorker = reg.installing;
           newWorker.addEventListener('statechange', () => {
