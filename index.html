@@ -137,6 +137,16 @@
   .pl-weight { font-size: 0.8rem; font-weight: 600; color: var(--text); min-width: 46px; }
   .plate-ladder-row .plate-chips { flex: 1; }
 
+  .rep-counter {
+    margin: 8px 16px 4px; padding: 10px 14px;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+    font-family: 'Bebas Neue', sans-serif; font-size: 1.3rem; letter-spacing: 0.04em;
+    color: var(--muted); text-align: center; transition: all 0.2s;
+  }
+  .rep-counter.complete { color: #000; background: var(--accent); border-color: var(--accent); }
+  .remove-set { background: none; border: none; color: var(--muted2); font-size: 1.2rem; cursor: pointer; width: 32px; }
+  .remove-set:active { color: var(--red); }
+
   .last-session {
     padding: 6px 16px 4px; font-size: 0.72rem;
     color: var(--muted); font-weight: 300; font-style: italic;
@@ -422,10 +432,12 @@ const WEEK_SCHEMES = {
   deload:   { label: 'Deload',         warmup: [],                     work: [[40,5,false],[50,5,false],[60,5,false]] },
 };
 
-// Assistance (minimal — chins + abs), rotating menus
+// Assistance (minimal — chins + abs). Prescription = rep_total: hit a
+// target number of reps across as many sets as you like; progress by
+// raising the target or adding load, not by adding sets.
 const ASSIST = [
-  { id:'pull', kind:'assist', slot:'Pull',  type:'Assistance', target:'5 × 10–20', inputType:'weight_reps', sets:5, options:['Chin-Ups','Pull-Ups','Lat Pulldown','1-Arm DB Row'] },
-  { id:'core', kind:'assist', slot:'Core',  type:'Assistance', target:'5 × 10–20', inputType:'weight_reps', sets:5, options:['Hanging Leg Raise','Cable Crunch','Ab Wheel','Weighted Sit-Up'] },
+  { id:'pull', kind:'assist', prescription:'rep_total', slot:'Pull', type:'Assistance', target:50, repRange:'6–15',  options:['Chin-Ups','Pull-Ups','Lat Pulldown','1-Arm DB Row'] },
+  { id:'core', kind:'assist', prescription:'rep_total', slot:'Core', type:'Assistance', target:50, repRange:'10–20', options:['Hanging Leg Raise','Cable Crunch','Ab Wheel','Weighted Sit-Up'] },
 ];
 
 // ── State ────────────────────────────────────────────────────────
@@ -451,8 +463,8 @@ function getSlots(day) {
   const main = DAYS[day].mainLift;
   const bbb = BBB_OPPOSITE[main];
   return [
-    { id:'main', kind:'main', slot:`${main} (5/3/1)`, type:'Main Lift', lift:main, weekDependent:true },
-    { id:'bbb',  kind:'bbb',  slot:`${bbb} (BBB 5×10)`, type:'Boring But Big', lift:bbb, weekDependent:true },
+    { id:'main', kind:'main', prescription:'sets_reps', slot:`${main} (5/3/1)`, type:'Main Lift', lift:main, weekDependent:true },
+    { id:'bbb',  kind:'bbb',  prescription:'sets_reps', slot:`${bbb} (BBB 5×10)`, type:'Boring But Big', lift:bbb, weekDependent:true },
     ...ASSIST,
   ];
 }
@@ -593,7 +605,11 @@ async function renderExercises() {
     area.appendChild(card);
   });
 
-  slots.forEach(cfg => { if (cfg.kind === 'main') updateE1RM(keyFor(cfg)); });
+  slots.forEach(cfg => {
+    const k = keyFor(cfg);
+    if (cfg.kind === 'main') updateE1RM(k);
+    if (cfg.prescription === 'rep_total') updateRepCounter(k);
+  });
 }
 
 function renderLiftCard(cfg, key, history) {
@@ -644,10 +660,12 @@ function buildLiftRows(key, state) {
 }
 
 function renderAssistCard(cfg, key, history) {
-  const inputType = cfg.inputType || 'weight_reps';
+  const isRepTotal = cfg.prescription === 'rep_total';
+  const inputType = isRepTotal ? 'rep_total' : (cfg.inputType || 'weight_reps');
   if (!variationState[key]) variationState[key] = cfg.options[0];
   const variation = variationState[key];
-  const state = getState(key, cfg.sets, inputType);
+  const state = getState(key, isRepTotal ? 3 : (cfg.sets || 3), inputType);
+  if (isRepTotal) state.target = cfg.target;
   const lastInfo = findLastForName(history, variation);
   const last = lastInfo ? lastInfo.ex : null;
   const dateStr = lastInfo ? fmt(lastInfo.date) : '';
@@ -659,23 +677,64 @@ function renderAssistCard(cfg, key, history) {
       + `</select></div>`;
   }
 
+  const typeLine = isRepTotal ? `${cfg.type} · ${cfg.repRange}/set` : cfg.type;
+  const targetLabel = isRepTotal ? `Target ${cfg.target}` : cfg.target;
+  const counter = isRepTotal ? `<div class="rep-counter" id="repcount-${key}">0 / ${cfg.target}</div>` : '';
+
   let lastHint = '';
   if (last) {
-    const summary = last.sets.filter(s => s.weight || s.reps).map(s => s.weight ? `${s.weight}×${s.reps || '?'}` : `${s.reps}`).join(', ');
-    if (summary) lastHint = `<div class="last-session">Last ${dateStr}: ${summary}</div>`;
+    if (isRepTotal) {
+      const sum = last.sets.reduce((a,s) => a + (parseInt(s.reps) || 0), 0);
+      if (sum) lastHint = `<div class="last-session">Last ${dateStr}: ${sum} total reps</div>`;
+    } else {
+      const summary = last.sets.filter(s => s.weight || s.reps).map(s => s.weight ? `${s.weight}×${s.reps || '?'}` : `${s.reps}`).join(', ');
+      if (summary) lastHint = `<div class="last-session">Last ${dateStr}: ${summary}</div>`;
+    }
   }
 
   let plateSection = '';
   if (isBarbellLift(variation)) plateSection = `<div class="plate-calc" id="plates-${key}">${plateLadderHTML(key, state.sets)}</div>`;
 
-  const setsHTML = buildSetRows(key, inputType, state, last);
+  const setsHTML = isRepTotal ? buildRepTotalRows(key, state, last) : buildSetRows(key, inputType, state, last);
 
   return `<div class="ex-card-header">
-      <div><div class="ex-card-name">${dropdown ? cfg.slot : variation}</div><div class="ex-card-type">${cfg.type}</div></div>
-      <div class="ex-target">${cfg.target}</div>
+      <div><div class="ex-card-name">${dropdown ? cfg.slot : variation}</div><div class="ex-card-type">${typeLine}</div></div>
+      <div class="ex-target">${targetLabel}</div>
     </div>
-    ${dropdown}${lastHint}${plateSection}${setsHTML}
+    ${dropdown}${counter}${lastHint}${plateSection}${setsHTML}
     <textarea class="notes-area" placeholder="Notes…" onchange="updateNote('${key}', this.value)">${state.note}</textarea>`;
+}
+
+// rep_total: freeform sets toward a rep target (optional load per set)
+function buildRepTotalRows(key, state, last) {
+  const labels = `<div class="set-labels"><div class="set-label"></div><div class="set-label">Load (opt)</div><div class="set-label">Reps</div><div class="set-label"></div></div>`;
+  let rows = '';
+  state.sets.forEach((s, i) => {
+    const wph = last?.sets[i]?.weight || 'body';
+    const rph = last?.sets[i]?.reps || 'reps';
+    rows += `<div class="set-row"><div class="set-num">${i+1}</div>
+      <input class="set-input w-input" type="number" inputmode="decimal" placeholder="${wph}" value="${s.weight || ''}" onchange="updateSet('${key}', ${i}, 'weight', this.value);updatePlateDisplay('${key}')" />
+      <input class="set-input" type="number" inputmode="numeric" placeholder="${rph}" value="${s.reps || ''}" oninput="updateSet('${key}', ${i}, 'reps', this.value);updateRepCounter('${key}')" />
+      <button class="remove-set" onclick="removeSet('${key}', ${i})" title="Remove set">×</button></div>`;
+  });
+  return `<div class="set-rows">${labels}${rows}</div><button class="add-set-btn" onclick="addSet('${key}', 'rep_total')">+ Add Set</button>`;
+}
+
+function updateRepCounter(key) {
+  const st = logState[key];
+  const el = document.getElementById(`repcount-${key}`);
+  if (!st || !el) return;
+  const target = st.target || 0;
+  const sum = st.sets.reduce((a, s) => a + (parseInt(s.reps) || 0), 0);
+  el.textContent = `${sum} / ${target}`;
+  el.classList.toggle('complete', target > 0 && sum >= target);
+}
+
+function removeSet(key, idx) {
+  if (!logState[key]) return;
+  logState[key].sets.splice(idx, 1);
+  if (!logState[key].sets.length) logState[key].sets.push({...blankSetFor('rep_total')});
+  renderExercises();
 }
 
 function buildSetRows(key, inputType, state, last) {
@@ -827,7 +886,9 @@ async function saveWorkout() {
     if (!state.sets.some(s => s.weight || s.reps || s.duration)) return;
     const name = cfg.kind === 'assist' ? (variationState[key] || cfg.options[0])
       : cfg.kind === 'bbb' ? `${cfg.lift} (BBB)` : cfg.lift;
-    saved.push({ slot: cfg.slot, type: cfg.type, kind: cfg.kind, name, week: currentWeek, sets: state.sets, note: state.note });
+    const rec = { slot: cfg.slot, type: cfg.type, kind: cfg.kind, prescription: cfg.prescription || (cfg.kind === 'assist' ? 'rep_total' : 'sets_reps'), name, week: currentWeek, sets: state.sets, note: state.note };
+    if (cfg.prescription === 'rep_total') rec.target = cfg.target;
+    saved.push(rec);
   });
   if (!saved.length) { showToast('Log at least one set first'); return; }
 
@@ -928,9 +989,14 @@ async function renderHistory() {
         return `<div class="history-set-chip ${cls}">${i+1}. ${label}</div>`;
       }).join('');
       const slotTag = ex.slot && ex.slot !== ex.name ? ` <span class="history-ex-slot">· ${ex.slot}</span>` : '';
+      let totalHTML = '';
+      if (ex.prescription === 'rep_total') {
+        const sum = (ex.sets || []).reduce((a,s) => a + (parseInt(s.reps) || 0), 0);
+        totalHTML = `<div class="history-set-chip amrap">Σ ${sum}${ex.target ? ` / ${ex.target}` : ''}</div>`;
+      }
       return `<div class="history-ex">
         <div class="history-ex-name">${ex.name}${slotTag}</div>
-        <div class="history-sets">${setsHTML}</div>
+        <div class="history-sets">${setsHTML}${totalHTML}</div>
         ${ex.note ? `<div class="history-note">${ex.note}</div>` : ''}
       </div>`;
     }).join('');
