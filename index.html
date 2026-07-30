@@ -137,6 +137,16 @@
   .pl-weight { font-size: 0.8rem; font-weight: 600; color: var(--text); min-width: 46px; }
   .plate-ladder-row .plate-chips { flex: 1; }
 
+  .rep-counter {
+    margin: 8px 16px 4px; padding: 10px 14px;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+    font-family: 'Bebas Neue', sans-serif; font-size: 1.3rem; letter-spacing: 0.04em;
+    color: var(--muted); text-align: center; transition: all 0.2s;
+  }
+  .rep-counter.complete { color: #000; background: var(--accent); border-color: var(--accent); }
+  .remove-set { background: none; border: none; color: var(--muted2); font-size: 1.2rem; cursor: pointer; width: 32px; }
+  .remove-set:active { color: var(--red); }
+
   .last-session {
     padding: 6px 16px 4px; font-size: 0.72rem;
     color: var(--muted); font-weight: 300; font-style: italic;
@@ -200,6 +210,8 @@
   /* Settings */
   .settings-intro { font-size: 0.85rem; color: var(--muted); line-height: 1.5; margin-bottom: 16px; }
   .settings-intro b { color: var(--text); }
+  .settings-subhead { font-family: 'Bebas Neue', sans-serif; font-size: 1.15rem; letter-spacing: 0.05em; color: var(--accent); margin: 4px 0 8px; }
+  .pl-short { color: var(--red); font-size: 0.7rem; font-style: italic; margin-left: 4px; }
   .setting-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 4px 16px; margin-bottom: 16px; }
   .setting-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--border); }
   .setting-row:last-child { border-bottom: none; }
@@ -334,7 +346,18 @@
     <div class="setting-row"><label>Deadlift</label><input id="tm-dl" type="number" inputmode="decimal" placeholder="lb"></div>
     <div class="setting-row"><label>BBB set %</label><input id="bbbPctInput" type="number" inputmode="numeric" placeholder="50"></div>
   </div>
-  <button class="settings-btn" onclick="saveSettings()">Save Training Maxes</button>
+  <div class="settings-subhead">Bar &amp; Plates</div>
+  <div class="settings-intro">Total plates you own of each size. The calculator loads symmetrically (pairs) and never suggests plates you don't have.</div>
+  <div class="setting-card">
+    <div class="setting-row"><label>Bar weight</label><input id="bar-weight" type="number" inputmode="decimal" placeholder="45"></div>
+    <div class="setting-row"><label>45 lb</label><input id="plate-45" type="number" inputmode="numeric" placeholder="0"></div>
+    <div class="setting-row"><label>35 lb</label><input id="plate-35" type="number" inputmode="numeric" placeholder="0"></div>
+    <div class="setting-row"><label>25 lb</label><input id="plate-25" type="number" inputmode="numeric" placeholder="0"></div>
+    <div class="setting-row"><label>10 lb</label><input id="plate-10" type="number" inputmode="numeric" placeholder="0"></div>
+    <div class="setting-row"><label>5 lb</label><input id="plate-5" type="number" inputmode="numeric" placeholder="0"></div>
+    <div class="setting-row"><label>2.5 lb</label><input id="plate-2_5" type="number" inputmode="numeric" placeholder="0"></div>
+  </div>
+  <button class="settings-btn" onclick="saveSettings()">Save Settings</button>
   <button class="settings-btn ghost" onclick="startNewCycle()">Start New Cycle · +5 upper / +10 lower</button>
   <button class="settings-btn ghost" onclick="switchTab('log')">Back to Log</button>
 </div>
@@ -381,9 +404,18 @@ const HEADERS = {
 };
 const CONFIG_DAY = '__CONFIG__';
 
-// Plate rack
-const RACK = [45, 35, 25, 10, 5, 5, 5, 5, 2.5, 2.5];
-const BAR_WEIGHT = 45;
+// Plate inventory — counts are TOTAL plates owned of each size; the
+// calculator loads symmetrically, so per side = floor(total / 2).
+const PLATE_DENOMS = [45, 35, 25, 10, 5, 2.5];
+function plateId(d) { return 'plate-' + String(d).replace('.', '_'); }
+function perSideRack() {
+  const rack = [];
+  PLATE_DENOMS.forEach(d => {
+    const perSide = Math.floor((parseInt(config.plates[String(d)]) || 0) / 2);
+    for (let i = 0; i < perSide; i++) rack.push(d);
+  });
+  return rack.sort((a, b) => b - a);
+}
 
 // Barbell movements — drive the plate calculator
 const BARBELL_KEYS = [
@@ -422,10 +454,12 @@ const WEEK_SCHEMES = {
   deload:   { label: 'Deload',         warmup: [],                     work: [[40,5,false],[50,5,false],[60,5,false]] },
 };
 
-// Assistance (minimal — chins + abs), rotating menus
+// Assistance (minimal — chins + abs). Prescription = rep_total: hit a
+// target number of reps across as many sets as you like; progress by
+// raising the target or adding load, not by adding sets.
 const ASSIST = [
-  { id:'pull', kind:'assist', slot:'Pull',  type:'Assistance', target:'5 × 10–20', inputType:'weight_reps', sets:5, options:['Chin-Ups','Pull-Ups','Lat Pulldown','1-Arm DB Row'] },
-  { id:'core', kind:'assist', slot:'Core',  type:'Assistance', target:'5 × 10–20', inputType:'weight_reps', sets:5, options:['Hanging Leg Raise','Cable Crunch','Ab Wheel','Weighted Sit-Up'] },
+  { id:'pull', kind:'assist', prescription:'rep_total', slot:'Pull', type:'Assistance', target:50, repRange:'6–15',  options:['Chin-Ups','Pull-Ups','Lat Pulldown','1-Arm DB Row'] },
+  { id:'core', kind:'assist', prescription:'rep_total', slot:'Core', type:'Assistance', target:50, repRange:'10–20', options:['Hanging Leg Raise','Cable Crunch','Ab Wheel','Weighted Sit-Up'] },
 ];
 
 // ── State ────────────────────────────────────────────────────────
@@ -437,7 +471,7 @@ let editingId = null;
 let historyCache = null;
 let progressChart = null;
 let selectedLift = null;
-let config = { tms: { 'Overhead Press':0, 'Bench Press':0, 'Squat':0, 'Deadlift':0 }, bbbPct: 50, week: 1 };
+let config = { tms: { 'Overhead Press':0, 'Bench Press':0, 'Squat':0, 'Deadlift':0 }, bbbPct: 50, week: 1, bar: 45, plates: { '45':2, '35':2, '25':2, '10':2, '5':8, '2.5':4 } };
 let configId = null;
 
 // ── Helpers ───────────────────────────────────────────────────────
@@ -451,8 +485,8 @@ function getSlots(day) {
   const main = DAYS[day].mainLift;
   const bbb = BBB_OPPOSITE[main];
   return [
-    { id:'main', kind:'main', slot:`${main} (5/3/1)`, type:'Main Lift', lift:main, weekDependent:true },
-    { id:'bbb',  kind:'bbb',  slot:`${bbb} (BBB 5×10)`, type:'Boring But Big', lift:bbb, weekDependent:true },
+    { id:'main', kind:'main', prescription:'sets_reps', slot:`${main} (5/3/1)`, type:'Main Lift', lift:main, weekDependent:true },
+    { id:'bbb',  kind:'bbb',  prescription:'sets_reps', slot:`${bbb} (BBB 5×10)`, type:'Boring But Big', lift:bbb, weekDependent:true },
     ...ASSIST,
   ];
 }
@@ -503,14 +537,14 @@ async function getConfig() {
     if (rows && rows.length) {
       configId = rows[0].id;
       const c = rows[0].exercises || {};
-      config = { tms: { ...config.tms, ...(c.tms || {}) }, bbbPct: c.bbbPct || 50, week: normWeek(c.week || 1) };
+      config = { tms: { ...config.tms, ...(c.tms || {}) }, bbbPct: c.bbbPct || 50, week: normWeek(c.week || 1), bar: c.bar || 45, plates: { ...config.plates, ...(c.plates || {}) } };
       currentWeek = config.week;
     }
   } catch(e) { console.error('config load failed', e); }
 }
 
 async function saveConfig(opts = {}) {
-  const payload = { day: CONFIG_DAY, week: null, exercises: { tms: config.tms, bbbPct: config.bbbPct, week: currentWeek } };
+  const payload = { day: CONFIG_DAY, week: null, exercises: { tms: config.tms, bbbPct: config.bbbPct, week: currentWeek, bar: config.bar, plates: config.plates } };
   try {
     if (configId) await dbFetch(`workouts?id=eq.${configId}`, { method:'PATCH', body: JSON.stringify(payload) });
     else { const r = await dbFetch('workouts', { method:'POST', body: JSON.stringify(payload) }); if (r && r[0]) configId = r[0].id; }
@@ -543,14 +577,13 @@ function lastAmrap(history, lift) {
 
 // ── Plate Calculator ─────────────────────────────────────────────
 function calcPlates(totalWeight) {
-  const perSide = (totalWeight - BAR_WEIGHT) / 2;
+  const perSide = (totalWeight - (config.bar || 45)) / 2;
   if (perSide <= 0) return [];
   let remaining = perSide;
   const used = [];
-  const available = [...RACK].sort((a,b) => b - a);
-  for (const plate of available) {
-    if (remaining <= 0) break;
-    if (plate <= remaining + 0.01) { used.push(plate); remaining -= plate; remaining = Math.round(remaining * 100) / 100; }
+  for (const plate of perSideRack()) {   // finite list — respects owned counts
+    if (remaining <= 0.01) break;
+    if (plate <= remaining + 0.01) { used.push(plate); remaining = Math.round((remaining - plate) * 100) / 100; }
   }
   return used;
 }
@@ -593,7 +626,11 @@ async function renderExercises() {
     area.appendChild(card);
   });
 
-  slots.forEach(cfg => { if (cfg.kind === 'main') updateE1RM(keyFor(cfg)); });
+  slots.forEach(cfg => {
+    const k = keyFor(cfg);
+    if (cfg.kind === 'main') updateE1RM(k);
+    if (cfg.prescription === 'rep_total') updateRepCounter(k);
+  });
 }
 
 function renderLiftCard(cfg, key, history) {
@@ -644,10 +681,12 @@ function buildLiftRows(key, state) {
 }
 
 function renderAssistCard(cfg, key, history) {
-  const inputType = cfg.inputType || 'weight_reps';
+  const isRepTotal = cfg.prescription === 'rep_total';
+  const inputType = isRepTotal ? 'rep_total' : (cfg.inputType || 'weight_reps');
   if (!variationState[key]) variationState[key] = cfg.options[0];
   const variation = variationState[key];
-  const state = getState(key, cfg.sets, inputType);
+  const state = getState(key, isRepTotal ? 3 : (cfg.sets || 3), inputType);
+  if (isRepTotal) state.target = cfg.target;
   const lastInfo = findLastForName(history, variation);
   const last = lastInfo ? lastInfo.ex : null;
   const dateStr = lastInfo ? fmt(lastInfo.date) : '';
@@ -659,23 +698,64 @@ function renderAssistCard(cfg, key, history) {
       + `</select></div>`;
   }
 
+  const typeLine = isRepTotal ? `${cfg.type} · ${cfg.repRange}/set` : cfg.type;
+  const targetLabel = isRepTotal ? `Target ${cfg.target}` : cfg.target;
+  const counter = isRepTotal ? `<div class="rep-counter" id="repcount-${key}">0 / ${cfg.target}</div>` : '';
+
   let lastHint = '';
   if (last) {
-    const summary = last.sets.filter(s => s.weight || s.reps).map(s => s.weight ? `${s.weight}×${s.reps || '?'}` : `${s.reps}`).join(', ');
-    if (summary) lastHint = `<div class="last-session">Last ${dateStr}: ${summary}</div>`;
+    if (isRepTotal) {
+      const sum = last.sets.reduce((a,s) => a + (parseInt(s.reps) || 0), 0);
+      if (sum) lastHint = `<div class="last-session">Last ${dateStr}: ${sum} total reps</div>`;
+    } else {
+      const summary = last.sets.filter(s => s.weight || s.reps).map(s => s.weight ? `${s.weight}×${s.reps || '?'}` : `${s.reps}`).join(', ');
+      if (summary) lastHint = `<div class="last-session">Last ${dateStr}: ${summary}</div>`;
+    }
   }
 
   let plateSection = '';
   if (isBarbellLift(variation)) plateSection = `<div class="plate-calc" id="plates-${key}">${plateLadderHTML(key, state.sets)}</div>`;
 
-  const setsHTML = buildSetRows(key, inputType, state, last);
+  const setsHTML = isRepTotal ? buildRepTotalRows(key, state, last) : buildSetRows(key, inputType, state, last);
 
   return `<div class="ex-card-header">
-      <div><div class="ex-card-name">${dropdown ? cfg.slot : variation}</div><div class="ex-card-type">${cfg.type}</div></div>
-      <div class="ex-target">${cfg.target}</div>
+      <div><div class="ex-card-name">${dropdown ? cfg.slot : variation}</div><div class="ex-card-type">${typeLine}</div></div>
+      <div class="ex-target">${targetLabel}</div>
     </div>
-    ${dropdown}${lastHint}${plateSection}${setsHTML}
+    ${dropdown}${counter}${lastHint}${plateSection}${setsHTML}
     <textarea class="notes-area" placeholder="Notes…" onchange="updateNote('${key}', this.value)">${state.note}</textarea>`;
+}
+
+// rep_total: freeform sets toward a rep target (optional load per set)
+function buildRepTotalRows(key, state, last) {
+  const labels = `<div class="set-labels"><div class="set-label"></div><div class="set-label">Load (opt)</div><div class="set-label">Reps</div><div class="set-label"></div></div>`;
+  let rows = '';
+  state.sets.forEach((s, i) => {
+    const wph = last?.sets[i]?.weight || 'body';
+    const rph = last?.sets[i]?.reps || 'reps';
+    rows += `<div class="set-row"><div class="set-num">${i+1}</div>
+      <input class="set-input w-input" type="number" inputmode="decimal" placeholder="${wph}" value="${s.weight || ''}" onchange="updateSet('${key}', ${i}, 'weight', this.value);updatePlateDisplay('${key}')" />
+      <input class="set-input" type="number" inputmode="numeric" placeholder="${rph}" value="${s.reps || ''}" oninput="updateSet('${key}', ${i}, 'reps', this.value);updateRepCounter('${key}')" />
+      <button class="remove-set" onclick="removeSet('${key}', ${i})" title="Remove set">×</button></div>`;
+  });
+  return `<div class="set-rows">${labels}${rows}</div><button class="add-set-btn" onclick="addSet('${key}', 'rep_total')">+ Add Set</button>`;
+}
+
+function updateRepCounter(key) {
+  const st = logState[key];
+  const el = document.getElementById(`repcount-${key}`);
+  if (!st || !el) return;
+  const target = st.target || 0;
+  const sum = st.sets.reduce((a, s) => a + (parseInt(s.reps) || 0), 0);
+  el.textContent = `${sum} / ${target}`;
+  el.classList.toggle('complete', target > 0 && sum >= target);
+}
+
+function removeSet(key, idx) {
+  if (!logState[key]) return;
+  logState[key].sets.splice(idx, 1);
+  if (!logState[key].sets.length) logState[key].sets.push({...blankSetFor('rep_total')});
+  renderExercises();
 }
 
 function buildSetRows(key, inputType, state, last) {
@@ -733,7 +813,11 @@ function plateLadderHTML(key, sets) {
   if (!groups.length) return `<div class="plate-calc-label">Plates per side</div><span class="plate-none">Enter a weight</span>`;
   const rows = groups.map(g => {
     const lab = g.labels.length > 1 ? `${g.labels[0]}–${g.labels[g.labels.length - 1]}` : g.labels[0];
-    return `<div class="plate-ladder-row"><span class="pl-set">${lab}</span><span class="pl-weight">${g.weight}</span><span class="plate-chips">${renderPlates(g.plates)}</span></div>`;
+    const perSide = (g.weight - (config.bar || 45)) / 2;
+    const loaded = g.plates.reduce((a, p) => a + p, 0);
+    const short = Math.round((perSide - loaded) * 100) / 100;
+    const shortNote = short > 0.01 ? `<span class="pl-short">${short} short/side</span>` : '';
+    return `<div class="plate-ladder-row"><span class="pl-set">${lab}</span><span class="pl-weight">${g.weight}</span><span class="plate-chips">${renderPlates(g.plates)}${shortNote}</span></div>`;
   }).join('');
   return `<div class="plate-calc-label">Plates per side · per set</div><div class="plate-ladder">${rows}</div>`;
 }
@@ -789,6 +873,8 @@ function selectWeek(w) {
 function openSettings() {
   TM_FIELDS.forEach(([id, lift]) => { const el = document.getElementById(`tm-${id}`); if (el) el.value = config.tms[lift] || ''; });
   document.getElementById('bbbPctInput').value = config.bbbPct;
+  document.getElementById('bar-weight').value = config.bar || 45;
+  PLATE_DENOMS.forEach(d => { const el = document.getElementById(plateId(d)); if (el) el.value = config.plates[String(d)] ?? ''; });
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('screen-settings').classList.add('active');
@@ -798,6 +884,8 @@ async function saveSettings() {
   TM_FIELDS.forEach(([id, lift]) => { const el = document.getElementById(`tm-${id}`); config.tms[lift] = parseFloat(el.value) || 0; });
   const b = parseFloat(document.getElementById('bbbPctInput').value);
   config.bbbPct = b > 0 ? b : 50;
+  config.bar = parseFloat(document.getElementById('bar-weight').value) || 45;
+  PLATE_DENOMS.forEach(d => { const el = document.getElementById(plateId(d)); const v = parseInt(el.value); config.plates[String(d)] = isNaN(v) ? 0 : v; });
   await saveConfig();
   logState = {};
   switchTab('log');
@@ -827,7 +915,9 @@ async function saveWorkout() {
     if (!state.sets.some(s => s.weight || s.reps || s.duration)) return;
     const name = cfg.kind === 'assist' ? (variationState[key] || cfg.options[0])
       : cfg.kind === 'bbb' ? `${cfg.lift} (BBB)` : cfg.lift;
-    saved.push({ slot: cfg.slot, type: cfg.type, kind: cfg.kind, name, week: currentWeek, sets: state.sets, note: state.note });
+    const rec = { slot: cfg.slot, type: cfg.type, kind: cfg.kind, prescription: cfg.prescription || (cfg.kind === 'assist' ? 'rep_total' : 'sets_reps'), name, week: currentWeek, sets: state.sets, note: state.note };
+    if (cfg.prescription === 'rep_total') rec.target = cfg.target;
+    saved.push(rec);
   });
   if (!saved.length) { showToast('Log at least one set first'); return; }
 
@@ -928,9 +1018,14 @@ async function renderHistory() {
         return `<div class="history-set-chip ${cls}">${i+1}. ${label}</div>`;
       }).join('');
       const slotTag = ex.slot && ex.slot !== ex.name ? ` <span class="history-ex-slot">· ${ex.slot}</span>` : '';
+      let totalHTML = '';
+      if (ex.prescription === 'rep_total') {
+        const sum = (ex.sets || []).reduce((a,s) => a + (parseInt(s.reps) || 0), 0);
+        totalHTML = `<div class="history-set-chip amrap">Σ ${sum}${ex.target ? ` / ${ex.target}` : ''}</div>`;
+      }
       return `<div class="history-ex">
         <div class="history-ex-name">${ex.name}${slotTag}</div>
-        <div class="history-sets">${setsHTML}</div>
+        <div class="history-sets">${setsHTML}${totalHTML}</div>
         ${ex.note ? `<div class="history-note">${ex.note}</div>` : ''}
       </div>`;
     }).join('');
