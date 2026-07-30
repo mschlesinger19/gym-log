@@ -210,6 +210,8 @@
   /* Settings */
   .settings-intro { font-size: 0.85rem; color: var(--muted); line-height: 1.5; margin-bottom: 16px; }
   .settings-intro b { color: var(--text); }
+  .settings-subhead { font-family: 'Bebas Neue', sans-serif; font-size: 1.15rem; letter-spacing: 0.05em; color: var(--accent); margin: 4px 0 8px; }
+  .pl-short { color: var(--red); font-size: 0.7rem; font-style: italic; margin-left: 4px; }
   .setting-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 4px 16px; margin-bottom: 16px; }
   .setting-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--border); }
   .setting-row:last-child { border-bottom: none; }
@@ -344,7 +346,18 @@
     <div class="setting-row"><label>Deadlift</label><input id="tm-dl" type="number" inputmode="decimal" placeholder="lb"></div>
     <div class="setting-row"><label>BBB set %</label><input id="bbbPctInput" type="number" inputmode="numeric" placeholder="50"></div>
   </div>
-  <button class="settings-btn" onclick="saveSettings()">Save Training Maxes</button>
+  <div class="settings-subhead">Bar &amp; Plates</div>
+  <div class="settings-intro">Total plates you own of each size. The calculator loads symmetrically (pairs) and never suggests plates you don't have.</div>
+  <div class="setting-card">
+    <div class="setting-row"><label>Bar weight</label><input id="bar-weight" type="number" inputmode="decimal" placeholder="45"></div>
+    <div class="setting-row"><label>45 lb</label><input id="plate-45" type="number" inputmode="numeric" placeholder="0"></div>
+    <div class="setting-row"><label>35 lb</label><input id="plate-35" type="number" inputmode="numeric" placeholder="0"></div>
+    <div class="setting-row"><label>25 lb</label><input id="plate-25" type="number" inputmode="numeric" placeholder="0"></div>
+    <div class="setting-row"><label>10 lb</label><input id="plate-10" type="number" inputmode="numeric" placeholder="0"></div>
+    <div class="setting-row"><label>5 lb</label><input id="plate-5" type="number" inputmode="numeric" placeholder="0"></div>
+    <div class="setting-row"><label>2.5 lb</label><input id="plate-2_5" type="number" inputmode="numeric" placeholder="0"></div>
+  </div>
+  <button class="settings-btn" onclick="saveSettings()">Save Settings</button>
   <button class="settings-btn ghost" onclick="startNewCycle()">Start New Cycle · +5 upper / +10 lower</button>
   <button class="settings-btn ghost" onclick="switchTab('log')">Back to Log</button>
 </div>
@@ -391,9 +404,18 @@ const HEADERS = {
 };
 const CONFIG_DAY = '__CONFIG__';
 
-// Plate rack
-const RACK = [45, 35, 25, 10, 5, 5, 5, 5, 2.5, 2.5];
-const BAR_WEIGHT = 45;
+// Plate inventory — counts are TOTAL plates owned of each size; the
+// calculator loads symmetrically, so per side = floor(total / 2).
+const PLATE_DENOMS = [45, 35, 25, 10, 5, 2.5];
+function plateId(d) { return 'plate-' + String(d).replace('.', '_'); }
+function perSideRack() {
+  const rack = [];
+  PLATE_DENOMS.forEach(d => {
+    const perSide = Math.floor((parseInt(config.plates[String(d)]) || 0) / 2);
+    for (let i = 0; i < perSide; i++) rack.push(d);
+  });
+  return rack.sort((a, b) => b - a);
+}
 
 // Barbell movements — drive the plate calculator
 const BARBELL_KEYS = [
@@ -449,7 +471,7 @@ let editingId = null;
 let historyCache = null;
 let progressChart = null;
 let selectedLift = null;
-let config = { tms: { 'Overhead Press':0, 'Bench Press':0, 'Squat':0, 'Deadlift':0 }, bbbPct: 50, week: 1 };
+let config = { tms: { 'Overhead Press':0, 'Bench Press':0, 'Squat':0, 'Deadlift':0 }, bbbPct: 50, week: 1, bar: 45, plates: { '45':2, '35':2, '25':2, '10':2, '5':8, '2.5':4 } };
 let configId = null;
 
 // ── Helpers ───────────────────────────────────────────────────────
@@ -515,14 +537,14 @@ async function getConfig() {
     if (rows && rows.length) {
       configId = rows[0].id;
       const c = rows[0].exercises || {};
-      config = { tms: { ...config.tms, ...(c.tms || {}) }, bbbPct: c.bbbPct || 50, week: normWeek(c.week || 1) };
+      config = { tms: { ...config.tms, ...(c.tms || {}) }, bbbPct: c.bbbPct || 50, week: normWeek(c.week || 1), bar: c.bar || 45, plates: { ...config.plates, ...(c.plates || {}) } };
       currentWeek = config.week;
     }
   } catch(e) { console.error('config load failed', e); }
 }
 
 async function saveConfig(opts = {}) {
-  const payload = { day: CONFIG_DAY, week: null, exercises: { tms: config.tms, bbbPct: config.bbbPct, week: currentWeek } };
+  const payload = { day: CONFIG_DAY, week: null, exercises: { tms: config.tms, bbbPct: config.bbbPct, week: currentWeek, bar: config.bar, plates: config.plates } };
   try {
     if (configId) await dbFetch(`workouts?id=eq.${configId}`, { method:'PATCH', body: JSON.stringify(payload) });
     else { const r = await dbFetch('workouts', { method:'POST', body: JSON.stringify(payload) }); if (r && r[0]) configId = r[0].id; }
@@ -555,14 +577,13 @@ function lastAmrap(history, lift) {
 
 // ── Plate Calculator ─────────────────────────────────────────────
 function calcPlates(totalWeight) {
-  const perSide = (totalWeight - BAR_WEIGHT) / 2;
+  const perSide = (totalWeight - (config.bar || 45)) / 2;
   if (perSide <= 0) return [];
   let remaining = perSide;
   const used = [];
-  const available = [...RACK].sort((a,b) => b - a);
-  for (const plate of available) {
-    if (remaining <= 0) break;
-    if (plate <= remaining + 0.01) { used.push(plate); remaining -= plate; remaining = Math.round(remaining * 100) / 100; }
+  for (const plate of perSideRack()) {   // finite list — respects owned counts
+    if (remaining <= 0.01) break;
+    if (plate <= remaining + 0.01) { used.push(plate); remaining = Math.round((remaining - plate) * 100) / 100; }
   }
   return used;
 }
@@ -792,7 +813,11 @@ function plateLadderHTML(key, sets) {
   if (!groups.length) return `<div class="plate-calc-label">Plates per side</div><span class="plate-none">Enter a weight</span>`;
   const rows = groups.map(g => {
     const lab = g.labels.length > 1 ? `${g.labels[0]}–${g.labels[g.labels.length - 1]}` : g.labels[0];
-    return `<div class="plate-ladder-row"><span class="pl-set">${lab}</span><span class="pl-weight">${g.weight}</span><span class="plate-chips">${renderPlates(g.plates)}</span></div>`;
+    const perSide = (g.weight - (config.bar || 45)) / 2;
+    const loaded = g.plates.reduce((a, p) => a + p, 0);
+    const short = Math.round((perSide - loaded) * 100) / 100;
+    const shortNote = short > 0.01 ? `<span class="pl-short">${short} short/side</span>` : '';
+    return `<div class="plate-ladder-row"><span class="pl-set">${lab}</span><span class="pl-weight">${g.weight}</span><span class="plate-chips">${renderPlates(g.plates)}${shortNote}</span></div>`;
   }).join('');
   return `<div class="plate-calc-label">Plates per side · per set</div><div class="plate-ladder">${rows}</div>`;
 }
@@ -848,6 +873,8 @@ function selectWeek(w) {
 function openSettings() {
   TM_FIELDS.forEach(([id, lift]) => { const el = document.getElementById(`tm-${id}`); if (el) el.value = config.tms[lift] || ''; });
   document.getElementById('bbbPctInput').value = config.bbbPct;
+  document.getElementById('bar-weight').value = config.bar || 45;
+  PLATE_DENOMS.forEach(d => { const el = document.getElementById(plateId(d)); if (el) el.value = config.plates[String(d)] ?? ''; });
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('screen-settings').classList.add('active');
@@ -857,6 +884,8 @@ async function saveSettings() {
   TM_FIELDS.forEach(([id, lift]) => { const el = document.getElementById(`tm-${id}`); config.tms[lift] = parseFloat(el.value) || 0; });
   const b = parseFloat(document.getElementById('bbbPctInput').value);
   config.bbbPct = b > 0 ? b : 50;
+  config.bar = parseFloat(document.getElementById('bar-weight').value) || 45;
+  PLATE_DENOMS.forEach(d => { const el = document.getElementById(plateId(d)); const v = parseInt(el.value); config.plates[String(d)] = isNaN(v) ? 0 : v; });
   await saveConfig();
   logState = {};
   switchTab('log');
