@@ -702,7 +702,7 @@ function renderAssistCard(cfg, key, history) {
     state.target = cfg.target;
     state.sets.forEach(s => { if (s.exercise === undefined) s.exercise = cfg.options[0]; });
     const counter = `<div class="rep-counter" id="repcount-${key}">0 / ${cfg.target}</div>`;
-    const setsHTML = buildRepTotalRows(cfg, key, state, history);
+    const setsHTML = buildRepTotalRows(cfg, key, state, history, slotExerciseOptions(cfg, history));
     return `<div class="ex-card-header">
         <div><div class="ex-card-name">${cfg.slot}</div><div class="ex-card-type">${cfg.type} · ${cfg.repRange}/set</div></div>
         <div class="ex-target">Target ${cfg.target}</div>
@@ -745,16 +745,25 @@ function renderAssistCard(cfg, key, history) {
     <textarea class="notes-area" placeholder="Notes…" onchange="updateNote('${key}', this.value)">${state.note}</textarea>`;
 }
 
+// Menu for a slot = built-in defaults + every exercise ever logged in
+// that slot (custom exercises stick once you've logged them).
+function slotExerciseOptions(cfg, history) {
+  const set = new Set(cfg.options);
+  (history || []).forEach(e => (e.exercises || []).forEach(ex => { if (ex.slot === cfg.slot && ex.name) set.add(ex.name); }));
+  return [...set];
+}
+
 // rep_total: freeform sets toward a rep target; each set picks its own
 // exercise (menu or custom), optional load, and all reps sum to the total.
-function buildRepTotalRows(cfg, key, state, history) {
+function buildRepTotalRows(cfg, key, state, history, menu) {
+  const baseMenu = menu || slotExerciseOptions(cfg, history);
   let rows = '';
   state.sets.forEach((s, i) => {
     const ex = s.exercise || cfg.options[0];
     const li = findLastForName(history, ex);
     const lw = li ? li.ex.sets.filter(x => x.weight).map(x => parseFloat(x.weight)) : [];
     const wph = lw.length ? String(Math.max(...lw)) : 'body';
-    const optList = [...new Set([...cfg.options, ex])].filter(Boolean);
+    const optList = [...new Set([...baseMenu, ex])].filter(Boolean);
     const select = `<select class="variation-select rt-ex" onchange="setRepExercise('${key}', ${i}, this.value)">`
       + optList.map(o => `<option ${o === ex ? 'selected' : ''}>${o}</option>`).join('')
       + `<option value="__custom__">✎ Custom…</option></select>`;
