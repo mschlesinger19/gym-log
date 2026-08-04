@@ -354,6 +354,12 @@
     <div class="setting-row"><label>Deadlift</label><input id="tm-dl" type="number" inputmode="decimal" placeholder="lb"></div>
     <div class="setting-row"><label>BBB set %</label><input id="bbbPctInput" type="number" inputmode="numeric" placeholder="50"></div>
   </div>
+  <div class="settings-subhead">Assistance Targets</div>
+  <div class="settings-intro">Total reps to hit per session for each assistance slot. Raise these (or add load) to progress — that's how assistance advances, not by adding sets.</div>
+  <div class="setting-card">
+    <div class="setting-row"><label>Pull (chins/rows)</label><input id="at-pull" type="number" inputmode="numeric" placeholder="50"></div>
+    <div class="setting-row"><label>Core (abs)</label><input id="at-core" type="number" inputmode="numeric" placeholder="50"></div>
+  </div>
   <div class="settings-subhead">Bar &amp; Plates</div>
   <div class="settings-intro">Total plates you own of each size. The calculator loads symmetrically (pairs) and never suggests plates you don't have.</div>
   <div class="setting-card">
@@ -479,7 +485,7 @@ let editingId = null;
 let historyCache = null;
 let progressChart = null;
 let selectedLift = null;
-let config = { tms: { 'Overhead Press':0, 'Bench Press':0, 'Squat':0, 'Deadlift':0 }, bbbPct: 50, week: 1, bar: 45, plates: { '45':2, '35':2, '25':2, '10':2, '5':8, '2.5':4 } };
+let config = { tms: { 'Overhead Press':0, 'Bench Press':0, 'Squat':0, 'Deadlift':0 }, bbbPct: 50, week: 1, bar: 45, plates: { '45':2, '35':2, '25':2, '10':2, '5':8, '2.5':4 }, assistTargets: { pull: 50, core: 50 } };
 let configId = null;
 
 // ── Helpers ───────────────────────────────────────────────────────
@@ -495,7 +501,7 @@ function getSlots(day) {
   return [
     { id:'main', kind:'main', prescription:'sets_reps', slot:`${main} (5/3/1)`, type:'Main Lift', lift:main, weekDependent:true },
     { id:'bbb',  kind:'bbb',  prescription:'sets_reps', slot:`${bbb} (BBB 5×10)`, type:'Boring But Big', lift:bbb, weekDependent:true },
-    ...ASSIST,
+    ...ASSIST.map(a => ({ ...a, target: (config.assistTargets && config.assistTargets[a.id]) || a.target })),
   ];
 }
 function keyFor(cfg) { return cfg.weekDependent ? `${currentDay}_${currentWeek}_${cfg.id}` : `${currentDay}_${cfg.id}`; }
@@ -545,14 +551,14 @@ async function getConfig() {
     if (rows && rows.length) {
       configId = rows[0].id;
       const c = rows[0].exercises || {};
-      config = { tms: { ...config.tms, ...(c.tms || {}) }, bbbPct: c.bbbPct || 50, week: normWeek(c.week || 1), bar: c.bar || 45, plates: { ...config.plates, ...(c.plates || {}) } };
+      config = { tms: { ...config.tms, ...(c.tms || {}) }, bbbPct: c.bbbPct || 50, week: normWeek(c.week || 1), bar: c.bar || 45, plates: { ...config.plates, ...(c.plates || {}) }, assistTargets: { ...config.assistTargets, ...(c.assistTargets || {}) } };
       currentWeek = config.week;
     }
   } catch(e) { console.error('config load failed', e); }
 }
 
 async function saveConfig(opts = {}) {
-  const payload = { day: CONFIG_DAY, week: null, exercises: { tms: config.tms, bbbPct: config.bbbPct, week: currentWeek, bar: config.bar, plates: config.plates } };
+  const payload = { day: CONFIG_DAY, week: null, exercises: { tms: config.tms, bbbPct: config.bbbPct, week: currentWeek, bar: config.bar, plates: config.plates, assistTargets: config.assistTargets } };
   try {
     if (configId) await dbFetch(`workouts?id=eq.${configId}`, { method:'PATCH', body: JSON.stringify(payload) });
     else { const r = await dbFetch('workouts', { method:'POST', body: JSON.stringify(payload) }); if (r && r[0]) configId = r[0].id; }
@@ -910,6 +916,7 @@ function selectWeek(w) {
 function openSettings() {
   TM_FIELDS.forEach(([id, lift]) => { const el = document.getElementById(`tm-${id}`); if (el) el.value = config.tms[lift] || ''; });
   document.getElementById('bbbPctInput').value = config.bbbPct;
+  ASSIST.forEach(a => { const el = document.getElementById(`at-${a.id}`); if (el) el.value = (config.assistTargets && config.assistTargets[a.id]) || a.target; });
   document.getElementById('bar-weight').value = config.bar || 45;
   PLATE_DENOMS.forEach(d => { const el = document.getElementById(plateId(d)); if (el) el.value = config.plates[String(d)] ?? ''; });
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -921,6 +928,7 @@ async function saveSettings() {
   TM_FIELDS.forEach(([id, lift]) => { const el = document.getElementById(`tm-${id}`); config.tms[lift] = parseFloat(el.value) || 0; });
   const b = parseFloat(document.getElementById('bbbPctInput').value);
   config.bbbPct = b > 0 ? b : 50;
+  ASSIST.forEach(a => { const v = parseInt(document.getElementById(`at-${a.id}`).value); config.assistTargets[a.id] = v > 0 ? v : a.target; });
   config.bar = parseFloat(document.getElementById('bar-weight').value) || 45;
   PLATE_DENOMS.forEach(d => { const el = document.getElementById(plateId(d)); const v = parseInt(el.value); config.plates[String(d)] = isNaN(v) ? 0 : v; });
   await saveConfig();
