@@ -146,6 +146,19 @@
   .rep-counter.complete { color: #000; background: var(--accent); border-color: var(--accent); }
   .remove-set { background: none; border: none; color: var(--muted2); font-size: 1.2rem; cursor: pointer; width: 32px; }
   .remove-set:active { color: var(--red); }
+  .next-up {
+    background: var(--card); border: 1px solid var(--accent2); border-radius: 10px;
+    padding: 10px 14px; margin: 0 0 14px; font-size: 0.8rem; color: var(--accent2); cursor: pointer;
+  }
+  .next-up b { color: var(--text); }
+  .skip-row { padding: 4px 16px 10px; }
+  .skip-btn {
+    background: none; border: 1px solid var(--border); color: var(--muted);
+    font-family: 'DM Sans', sans-serif; font-size: 0.72rem; text-transform: uppercase;
+    letter-spacing: 0.05em; border-radius: 6px; padding: 6px 14px; cursor: pointer;
+  }
+  .skip-btn.on { border-color: var(--accent2); color: var(--accent2); }
+  .rt-inputs.one-col { grid-template-columns: 1fr; }
   .rt-hint { padding: 6px 16px 2px; font-size: 0.72rem; color: var(--muted); font-style: italic; }
   .muted-name { color: var(--muted); }
   .ex-target.zeroed { color: var(--muted2); font-weight: 500; }
@@ -343,37 +356,47 @@
 <!-- LOG SCREEN -->
 <div class="screen active" id="screen-log">
   <div class="day-selector" id="daySelector">
-    <div class="day-pill active" onclick="selectDay('D1')" id="pill-D1">Press</div>
+    <div class="day-pill active" onclick="selectDay('D1')" id="pill-D1">OHP</div>
     <div class="day-pill" onclick="selectDay('D2')" id="pill-D2">Deadlift</div>
     <div class="day-pill" onclick="selectDay('D3')" id="pill-D3">Bench</div>
     <div class="day-pill" onclick="selectDay('D4')" id="pill-D4">Squat</div>
   </div>
   <div class="week-selector" id="weekSelector">
-    <div class="week-pill active" onclick="selectWeek(1)">Wk 1 · 5s</div>
-    <div class="week-pill" onclick="selectWeek(2)">Wk 2 · 3s</div>
-    <div class="week-pill" onclick="selectWeek(3)">Wk 3 · 5/3/1</div>
-    <div class="week-pill" onclick="selectWeek('deload')">Deload</div>
+    <div class="week-pill active" onclick="selectWeek(1)">Wk 1 · 65/75/85</div>
+    <div class="week-pill" onclick="selectWeek(2)">Wk 2 · 70/80/90</div>
+    <div class="week-pill" onclick="selectWeek(3)">Wk 3 · 75/85/95</div>
+    <div class="week-pill" onclick="selectWeek('deload')">Wk 4 · Deload</div>
   </div>
+  <div class="next-up" id="nextUp" onclick="jumpToNext()"></div>
   <div class="day-full" id="dayFull"></div>
   <div id="exerciseArea"></div>
 </div>
 
 <!-- SETTINGS SCREEN -->
 <div class="screen" id="screen-settings">
-  <div class="settings-intro">Your <b>Training Max</b> is about 90% of your true 1-rep max. Every weight in the app is calculated from these — set them once per cycle.</div>
+  <div class="settings-intro">Your <b>Training Max</b> is about 90% of your true 1-rep max. Every weight is calculated from these — main sets from the main lift's TM, and <b>BBB volume from the volume lift's own TM</b>.</div>
   <div class="setting-card">
     <div class="setting-row"><label>Overhead Press</label><input id="tm-ohp" type="number" inputmode="decimal" placeholder="lb"></div>
     <div class="setting-row"><label>Bench Press</label><input id="tm-bench" type="number" inputmode="decimal" placeholder="lb"></div>
     <div class="setting-row"><label>Squat</label><input id="tm-squat" type="number" inputmode="decimal" placeholder="lb"></div>
     <div class="setting-row"><label>Deadlift</label><input id="tm-dl" type="number" inputmode="decimal" placeholder="lb"></div>
-    <div class="setting-row"><label>BBB set %</label><input id="bbbPctInput" type="number" inputmode="numeric" placeholder="50"></div>
+    <div class="setting-row"><label>Front Squat<span class="at-why">untested — 95 lb until set</span></label><input id="tm-fsq" type="number" inputmode="decimal" placeholder="untested"></div>
+    <div class="setting-row"><label>Romanian Deadlift<span class="at-why">untested — 125 lb until set</span></label><input id="tm-rdl" type="number" inputmode="decimal" placeholder="untested"></div>
+  </div>
+  <div class="settings-intro" id="cycleInfo"></div>
+  <div class="settings-subhead">Schedule</div>
+  <div class="settings-intro">Same four days either way. On a 3-day week they roll Mon/Wed/Fri, so a cycle takes ~5 weeks — position is tracked by <b>sessions completed</b>, not the calendar.</div>
+  <div class="setting-card">
+    <div class="setting-row"><label>Days per week</label>
+      <button class="toggle-btn" id="scheduleToggle" onclick="toggleSchedule()">4-day</button>
+    </div>
   </div>
   <div class="settings-subhead">Assistance Targets</div>
   <div class="settings-intro">Rep totals per session, <b>set per training day</b>. A <b>0</b> means the category is intentionally skipped that day — the reason shows on the card. Raise targets (or add load) to progress.</div>
   <div class="setting-card" id="assistTargetCard"></div>
 
   <div class="settings-subhead">In-Season Mode</div>
-  <div class="settings-intro">Halves every non-zero rep target and drops BBB to 3×10. Copenhagen planks are unaffected.</div>
+  <div class="settings-intro">Halves every non-zero assistance target, drops BBB to 3×10, and prefers the 3-day schedule. Copenhagen planks are unaffected.</div>
   <div class="setting-card">
     <div class="setting-row"><label>In-season</label>
       <button class="toggle-btn" id="inSeasonToggle" onclick="toggleInSeason()">Off</button>
@@ -391,7 +414,7 @@
     <div class="setting-row"><label>2.5 lb</label><input id="plate-2_5" type="number" inputmode="numeric" placeholder="0"></div>
   </div>
   <button class="settings-btn" onclick="saveSettings()">Save Settings</button>
-  <button class="settings-btn ghost" onclick="startNewCycle()">Start New Cycle · +5 upper / +10 lower</button>
+  <button class="settings-btn ghost" onclick="startNewCycle()">Start Next Cycle · +5 upper / +10 lower</button>
   <button class="settings-btn ghost" onclick="switchTab('log')">Back to Log</button>
 </div>
 
@@ -465,77 +488,134 @@ function isBarbellLift(name) {
 // Four main lifts, one per day. All weights are computed from each
 // lift's Training Max (TM ≈ 90% of 1RM). The Boring But Big work is
 // 5×10 of the *opposite* lift at 50% TM.
-// Assistance targets are PER DAY, not global — an upper day has no leg
-// work, and days whose BBB volume lift already trains the legs zero it
-// out too. Each zero carries a reason so the UI can explain itself.
+// ── Program definition ────────────────────────────────────────────
+// Everything here is DERIVED from each day's lifts — assistance targets
+// are computed, not hardcoded, so a day's leg work follows from whether
+// its BBB volume lift is an upper-body lift.
+const REGION = {
+  'Overhead Press':'upper', 'Bench Press':'upper',
+  'Squat':'lower', 'Deadlift':'lower', 'Front Squat':'lower', 'Romanian Deadlift':'lower',
+};
 const DAYS = {
-  D1: { label: 'Press',    full: 'Day 1 — OHP 5’s PRO / Bench 5×10',        badge: 'a',
-        mainLift: 'Overhead Press', bbbLift: 'Bench Press',       bbbTm: 'Bench Press',
-        assist: { pull: 50, legs: 0,  core: 50 },
-        reasons: { legs: 'Upper day' }, extras: [] },
-  D2: { label: 'Deadlift', full: 'Day 2 — Deadlift 5’s PRO / Front Squat 5×10', badge: 'b',
-        mainLift: 'Deadlift',       bbbLift: 'Front Squat',       bbbTm: 'Squat',
-        assist: { pull: 50, legs: 0,  core: 50 },
-        reasons: { legs: 'Covered by BBB volume lift' }, extras: ['copenhagen'] },
-  D3: { label: 'Bench',    full: 'Day 3 — Bench 5’s PRO / OHP 5×10',        badge: 'c',
-        mainLift: 'Bench Press',    bbbLift: 'Overhead Press',    bbbTm: 'Overhead Press',
-        assist: { pull: 50, legs: 50, core: 50 },
-        reasons: {}, extras: [] },
-  D4: { label: 'Squat',    full: 'Day 4 — Squat 5’s PRO / RDL 5×10',        badge: 'd',
-        mainLift: 'Squat',          bbbLift: 'Romanian Deadlift', bbbTm: 'Deadlift',
-        assist: { pull: 50, legs: 0,  core: 50 },
-        reasons: { legs: 'Covered by BBB volume lift' }, extras: ['copenhagen'] },
+  D1: { label:'OHP',      badge:'a', mainLift:'Overhead Press', bbbLift:'Bench Press' },
+  D2: { label:'Deadlift', badge:'b', mainLift:'Deadlift',       bbbLift:'Front Squat' },
+  D3: { label:'Bench',    badge:'c', mainLift:'Bench Press',    bbbLift:'Overhead Press' },
+  D4: { label:'Squat',    badge:'d', mainLift:'Squat',          bbbLift:'Romanian Deadlift' },
 };
-const TM_FIELDS = [['ohp','Overhead Press'], ['bench','Bench Press'], ['squat','Squat'], ['dl','Deadlift']];
+const DAY_ORDER = ['D1','D2','D3','D4'];
+DAY_ORDER.forEach((k, i) => {
+  const d = DAYS[k];
+  d.region = REGION[d.mainLift];                  // day type comes from the MAIN lift
+  d.full = `Day ${i+1} — ${d.mainLift} 5's PRO / ${d.bbbLift} BBB`;
+});
 
-// 5's PRO: every working set is 5 reps, no AMRAP — percentages still
-// wave by week. work tuple = [pct, targetReps, isAMRAP]
+// Training Maxes. Cycle-1 starting values; +5 upper / +10 lower per cycle.
+const TM_DEFAULTS = { 'Overhead Press':100, 'Bench Press':190, 'Squat':210, 'Deadlift':230, 'Front Squat':0, 'Romanian Deadlift':0 };
+const TM_FIELDS = [['ohp','Overhead Press'], ['bench','Bench Press'], ['squat','Squat'], ['dl','Deadlift'], ['fsq','Front Squat'], ['rdl','Romanian Deadlift']];
+// Untested lifts: fixed cycle-1 loads until a TM is entered.
+const BBB_START_LOAD = { 'Front Squat':95, 'Romanian Deadlift':125 };
+
+// 5's PRO — 3 sets of 5, no AMRAP. Warm-ups precede the working sets.
+// work tuple = [pct, reps, isAMRAP]
 const WEEK_SCHEMES = {
-  1:        { label: 'Week 1 · 5’s PRO', warmup: [[40,5],[50,5],[60,3]], work: [[65,5,false],[75,5,false],[85,5,false]] },
-  2:        { label: 'Week 2 · 5’s PRO', warmup: [[40,5],[50,5],[60,3]], work: [[70,5,false],[80,5,false],[90,5,false]] },
-  3:        { label: 'Week 3 · 5’s PRO', warmup: [[40,5],[50,5],[60,3]], work: [[75,5,false],[85,5,false],[95,5,false]] },
-  deload:   { label: 'Deload',              warmup: [],                     work: [[40,5,false],[50,5,false],[60,5,false]] },
+  1:      { label:"Week 1 · 5's PRO", warmup:[[40,5],[50,5],[60,3]], work:[[65,5,false],[75,5,false],[85,5,false]] },
+  2:      { label:"Week 2 · 5's PRO", warmup:[[40,5],[50,5],[60,3]], work:[[70,5,false],[80,5,false],[90,5,false]] },
+  3:      { label:"Week 3 · 5's PRO", warmup:[[40,5],[50,5],[60,3]], work:[[75,5,false],[85,5,false],[95,5,false]] },
+  deload: { label:'Week 4 · Deload',  warmup:[],                     work:[[40,5,false],[50,5,false],[60,5,false]] },
 };
+const WEEK_ORDER = [1, 2, 3, 'deload'];
 
-// Assistance categories. Prescription = rep_total: hit a target number
-// of reps across as many sets as you like; progress by raising the
-// target or adding load, not by adding sets. Targets come from the day.
-const ASSIST = [
-  { id:'pull', kind:'assist', prescription:'rep_total', slot:'Pull', type:'Assistance', repRange:'6–15',  options:['Chin-Ups','Pull-Ups','Lat Pulldown','1-Arm DB Row'] },
-  { id:'legs', kind:'assist', prescription:'rep_total', slot:'Legs', type:'Assistance', repRange:'8–15',  options:['Walking Lunge','Reverse Lunge','Step-Up','Single-Leg RDL','Bulgarian Split Squat'] },
-  { id:'core', kind:'assist', prescription:'rep_total', slot:'Core', type:'Assistance', repRange:'10–20', options:['Hanging Leg Raise','Cable Crunch','Ab Wheel','Weighted Sit-Up'] },
-];
-
-// Extras sit outside the category targets — goalie adductor work that is
-// exempt from the legs=0 rule and unaffected by in-season scaling.
-const EXTRAS = {
-  copenhagen: { id:'copenhagen', kind:'assist', prescription:'sets_reps', inputType:'per_side', sets:3,
-                slot:'Copenhagen Plank', type:'Adductor · exempt', target:'3 × 8/side',
-                options:['Copenhagen Plank','Copenhagen Plank (bent knee)','Copenhagen Plank (top leg support)'] },
-};
-
-// In-season: halve every non-zero rep target and cut BBB to 3×10.
-// Zeroed categories stay zero; extras (Copenhagen) are untouched.
-const INSEASON_TARGET_FACTOR = 0.5;
+// BBB volume load = BBB% of the VOLUME LIFT'S OWN TM — not the main
+// lift's. Percentage climbs by cycle and caps at 60%.
+function bbbPct() { const c = config.cycle || 1; return c <= 1 ? 55 : c === 2 ? 57.5 : 60; }
 function bbbSetCount() { return config.inSeason ? 3 : 5; }
+function bbbLoadFor(lift) {
+  const tm = config.tms[lift] || 0;
+  if (tm) return roundTo5(tm * bbbPct() / 100);
+  return BBB_START_LOAD[lift] || 0;               // untested lift, cycle-1 fallback
+}
+function needsTM(lift) { return !config.tms[lift] && BBB_START_LOAD[lift] !== undefined; }
+
+// Jumps / throws — every session, before the bar. Reps only, max intent.
+const JUMP_POOL = {
+  upper: ['Vertical Jump','Broad Jump','Med Ball Chest Pass'],
+  lower: ['Rotational Med Ball Throw','KB Swing'],
+};
+const JUMP_TARGET = 20;
+
+// Assistance pools. Pull differs by day type — deadlift and squat days
+// already tax grip, so those days row instead of hanging from a bar.
+const PULL_POOL = {
+  upper: ['Chin-Ups','Pull-Ups'],
+  lower: ['DB Row','Barbell Row','Face Pulls'],
+};
+const LEGS_POOL = ['Walking Lunge','Step-Up','Split Squat','Single-Leg RDL','Back Extension'];
+const CORE_POOL = ['Hanging Leg Raise','Pallof Press','Ab Wheel'];
+const ASSIST_IDS = ['pull','legs','core'];
+const ASSIST_META = {
+  pull: { slot:'Pull', type:'Assistance' },
+  legs: { slot:'Legs', type:'Assistance' },
+  core: { slot:'Core', type:'Assistance' },
+};
+
+// DERIVED targets: pull and core are 50 every day; legs is 50 only when
+// the BBB volume lift is an UPPER-body lift, else 0.
+function programTarget(day, id) {
+  if (id === 'legs') return REGION[DAYS[day].bbbLift] === 'upper' ? 50 : 0;
+  return 50;
+}
+function zeroReason(day, id) {
+  return programTarget(day, id) === 0 ? 'covered by BBB volume lift' : '';
+}
+const INSEASON_TARGET_FACTOR = 0.5;
 function scaleTarget(n) {
   const t = parseInt(n) || 0;
   if (!t || !config.inSeason) return t;
   return Math.max(1, Math.round(t * INSEASON_TARGET_FACTOR));
 }
-// Effective target for a day+category: per-day override, else program default.
-// Targets used to be a flat global { pull, core }. Drop that shape —
-// per-day program defaults supersede it.
+function assistTargetFor(day, id) {
+  const ov = config.assistTargets && config.assistTargets[day] && config.assistTargets[day][id];
+  const base = ov === undefined || ov === null || ov === '' ? programTarget(day, id) : ov;
+  return scaleTarget(base);
+}
 function normAssistTargets(raw) {
   const out = {};
   if (!raw || typeof raw !== 'object') return out;
-  Object.keys(DAYS).forEach(d => { if (raw[d] && typeof raw[d] === 'object') out[d] = { ...raw[d] }; });
+  ['D1','D2','D3','D4'].forEach(d => { if (raw[d] && typeof raw[d] === 'object') out[d] = { ...raw[d] }; });
   return out;
 }
-function assistTargetFor(day, id) {
-  const override = config.assistTargets && config.assistTargets[day] && config.assistTargets[day][id];
-  const base = override === undefined || override === null || override === '' ? DAYS[day].assist[id] : override;
-  return scaleTarget(base);
+function assistPool(day, id) {
+  if (id === 'pull') return PULL_POOL[DAYS[day].region];
+  if (id === 'legs') return LEGS_POOL;
+  return CORE_POOL;
+}
+// Bodyweight pulling at 10s is near-maximal — steer toward more, smaller sets.
+function repHint(day, id) {
+  if (id === 'pull' && DAYS[day].region === 'upper') return 'Suggest 8–10 sets of 5–6 reps';
+  return 'Add sets freely — any mix of exercises counts toward the total';
+}
+
+// Copenhagen plank — days 2 and 4. Exempt from the legs=0 rule, tracked
+// separately from the legs category, unaffected by in-season scaling.
+// Logs either reps/side or a timed hold per side.
+const COPENHAGEN = {
+  id:'copenhagen', kind:'extra', slot:'Copenhagen Plank', type:'Adductor · exempt', sets:3,
+  repTarget:'3 × 8/side', timeTarget:'3 × 15–20s/side',
+  options:['Copenhagen Plank','Copenhagen Plank (bent knee)','Copenhagen Plank (top-leg support)'],
+};
+function dayExtras(day) { return (day === 'D2' || day === 'D4') ? [COPENHAGEN] : []; }
+
+// ── Cycle position — tracked by DAYS COMPLETED, not calendar week ──
+// A 3-day schedule rolls the same four days Mon/Wed/Fri, so a cycle
+// takes ~5 weeks instead of 4. Either way the position is a count.
+const SESSIONS_PER_CYCLE = 16;                    // 4 days × 4 weeks
+function sessionsThisCycle(history) {
+  const start = config.cycleStartedAt || 0;
+  return (history || []).filter(e => DAYS[e.day] && new Date(e.created_at).getTime() >= start).length;
+}
+function nextUp(history) {
+  const pos = sessionsThisCycle(history) % SESSIONS_PER_CYCLE;
+  return { pos, day: DAY_ORDER[pos % 4], week: WEEK_ORDER[Math.floor(pos / 4)] };
 }
 
 // ── State ────────────────────────────────────────────────────────
@@ -549,7 +629,9 @@ let progressChart = null;
 let selectedLift = null;
 // assistTargets holds PER-DAY overrides only: { D1: { pull: 50, ... } }.
 // Anything unset falls back to the day's program default in DAYS.
-let config = { tms: { 'Overhead Press':0, 'Bench Press':0, 'Squat':0, 'Deadlift':0 }, bbbPct: 50, week: 1, bar: 45, plates: { '45':2, '35':2, '25':2, '10':2, '5':8, '2.5':4 }, assistTargets: {}, inSeason: false };
+let config = { tms: { ...TM_DEFAULTS }, week: 1, cycle: 1, cycleStartedAt: 0, schedule: '4day',
+  bar: 45, plates: { '45':2, '35':2, '25':2, '10':2, '5':8, '2.5':4 },
+  assistTargets: {}, skipped: {}, inSeason: false };
 let configId = null;
 
 // ── Helpers ───────────────────────────────────────────────────────
@@ -561,12 +643,18 @@ function weekShort(w) { return w === 'deload' ? 'Deload' : `Wk${w}`; }
 
 function getSlots(day) {
   const d = DAYS[day];
-  const main = d.mainLift, bbb = d.bbbLift;
   return [
-    { id:'main', kind:'main', prescription:'sets_reps', slot:`${main} (5/3/1)`, type:'Main Lift', lift:main, weekDependent:true },
-    { id:'bbb',  kind:'bbb',  prescription:'sets_reps', slot:`${bbb} (BBB)`, type:'Boring But Big', lift:bbb, tmLift:d.bbbTm, weekDependent:true },
-    ...ASSIST.map(a => ({ ...a, target: assistTargetFor(day, a.id), reason: d.reasons[a.id] || '' })),
-    ...(d.extras || []).map(id => EXTRAS[id]).filter(Boolean),
+    { id:'jumps', kind:'jumps', prescription:'rep_total', slot:'Jumps / Throws', type:'Explosive · before the bar',
+      target: JUMP_TARGET, noLoad:true, hint:'Low volume, max intent — log reps only',
+      options: JUMP_POOL[d.region] },
+    { id:'main', kind:'main', prescription:'sets_reps', slot:`${d.mainLift} (5/3/1)`, type:'Main Lift', lift:d.mainLift, weekDependent:true },
+    { id:'bbb',  kind:'bbb',  prescription:'sets_reps', slot:`${d.bbbLift} (BBB)`, type:'Boring But Big', lift:d.bbbLift, weekDependent:true },
+    ...ASSIST_IDS.map(id => ({
+      id, kind:'assist', prescription:'rep_total', slot: ASSIST_META[id].slot, type: ASSIST_META[id].type,
+      target: assistTargetFor(day, id), reason: zeroReason(day, id),
+      hint: repHint(day, id), options: assistPool(day, id),
+    })),
+    ...dayExtras(day),
   ];
 }
 function keyFor(cfg) { return cfg.weekDependent ? `${currentDay}_${currentWeek}_${cfg.id}` : `${currentDay}_${cfg.id}`; }
@@ -586,12 +674,11 @@ function mainRows(lift) {
   scheme.work.forEach(([pct, reps, amrap]) => rows.push({ pct, reps, warmup:false, amrap:!!amrap }));
   return rows.map(r => ({ ...r, weight: tm ? roundTo5(tm * r.pct / 100) : '' }));
 }
-// Prescribed rows for the BBB volume work. Variations (Front Squat,
-// RDL) have no TM of their own, so they compute off their source lift.
-function bbbRows(lift, tmLift) {
-  const tm = config.tms[tmLift || lift] || 0;
-  const w = tm ? roundTo5(tm * config.bbbPct / 100) : '';
-  return Array.from({ length: bbbSetCount() }, () => ({ pct:config.bbbPct, reps:10, warmup:false, amrap:false, weight:w }));
+// Prescribed rows for the BBB volume work — always off the VOLUME
+// lift's own TM, falling back to a fixed load for untested lifts.
+function bbbRows(lift) {
+  const w = bbbLoadFor(lift) || '';
+  return Array.from({ length: bbbSetCount() }, () => ({ pct:bbbPct(), reps:10, warmup:false, amrap:false, weight:w }));
 }
 
 // ── Supabase ─────────────────────────────────────────────────────
@@ -617,14 +704,21 @@ async function getConfig() {
     if (rows && rows.length) {
       configId = rows[0].id;
       const c = rows[0].exercises || {};
-      config = { tms: { ...config.tms, ...(c.tms || {}) }, bbbPct: c.bbbPct || 50, week: normWeek(c.week || 1), bar: c.bar || 45, plates: { ...config.plates, ...(c.plates || {}) }, assistTargets: normAssistTargets(c.assistTargets), inSeason: !!c.inSeason };
+      const tms = { ...TM_DEFAULTS };
+      Object.entries(c.tms || {}).forEach(([k, v]) => { if (parseFloat(v) > 0) tms[k] = parseFloat(v); });
+      config = { tms, week: normWeek(c.week || 1), cycle: parseInt(c.cycle) || 1, cycleStartedAt: c.cycleStartedAt || 0,
+        schedule: c.schedule === '3day' ? '3day' : '4day', bar: c.bar || 45,
+        plates: { ...config.plates, ...(c.plates || {}) }, assistTargets: normAssistTargets(c.assistTargets),
+        skipped: {}, inSeason: !!c.inSeason };
       currentWeek = config.week;
     }
   } catch(e) { console.error('config load failed', e); }
 }
 
 async function saveConfig(opts = {}) {
-  const payload = { day: CONFIG_DAY, week: null, exercises: { tms: config.tms, bbbPct: config.bbbPct, week: currentWeek, bar: config.bar, plates: config.plates, assistTargets: config.assistTargets, inSeason: config.inSeason } };
+  const payload = { day: CONFIG_DAY, week: null, exercises: { tms: config.tms, week: currentWeek,
+    cycle: config.cycle, cycleStartedAt: config.cycleStartedAt, schedule: config.schedule,
+    bar: config.bar, plates: config.plates, assistTargets: config.assistTargets, inSeason: config.inSeason } };
   try {
     if (configId) await dbFetch(`workouts?id=eq.${configId}`, { method:'PATCH', body: JSON.stringify(payload) });
     else { const r = await dbFetch('workouts', { method:'POST', body: JSON.stringify(payload) }); if (r && r[0]) configId = r[0].id; }
@@ -702,28 +796,33 @@ async function renderExercises() {
     const card = document.createElement('div');
     card.className = 'ex-card';
     card.id = `excard-${key}`;
-    card.innerHTML = (cfg.kind === 'assist') ? renderAssistCard(cfg, key, history) : renderLiftCard(cfg, key, history);
+    card.innerHTML = cfg.kind === 'extra' ? renderExtraCard(cfg, key, history)
+      : cfg.prescription === 'rep_total' ? renderRepTotalCard(cfg, key, history)
+      : renderLiftCard(cfg, key, history);
     area.appendChild(card);
   });
 
   slots.forEach(cfg => {
     const k = keyFor(cfg);
-    if (cfg.kind === 'main') updateE1RM(k);
-    if (cfg.prescription === 'rep_total') updateRepCounter(k);
+    if (cfg.prescription === 'rep_total' && cfg.target) updateRepCounter(k);
   });
 }
 
 function renderLiftCard(cfg, key, history) {
   const lift = cfg.lift;
-  const tmLift = cfg.tmLift || lift;
-  const tm = config.tms[tmLift] || 0;
-  const rows = cfg.kind === 'main' ? mainRows(lift) : bbbRows(lift, tmLift);
+  const isMain = cfg.kind === 'main';
+  const tm = config.tms[lift] || 0;
+  const rows = isMain ? mainRows(lift) : bbbRows(lift);
   const state = getLiftState(key, rows);
   const scheme = WEEK_SCHEMES[currentWeek];
-  const target = cfg.kind === 'main' ? scheme.label : `${bbbSetCount()} × 10 @ ${config.bbbPct}%`;
-  const tmNote = tmLift !== lift ? ` (${tmLift} TM)` : '';
-  const typeLine = `${cfg.type} · TM ${tm || '—'}${tmNote}`;
-  const warn = tm ? '' : `<div class="tm-warn">Set your Training Max in ⚙ Settings to see weights.</div>`;
+  const target = isMain ? scheme.label : `${bbbSetCount()} × 10 @ ${bbbPct()}%`;
+  const typeLine = isMain
+    ? `${cfg.type} · TM ${tm || '—'}`
+    : (tm ? `${cfg.type} · ${bbbPct()}% of ${lift} TM ${tm}` : `${cfg.type} · untested — fixed ${bbbLoadFor(lift)} lb`);
+  const warn = isMain && !tm
+    ? `<div class="tm-warn">Set your Training Max in ⚙ Settings to see weights.</div>`
+    : (!isMain && needsTM(lift) && (config.cycle || 1) > 1
+        ? `<div class="tm-warn">Cycle ${config.cycle} — time to test a ${lift} TM in ⚙ Settings.</div>` : '');
 
   const e1rmDiv = cfg.kind === 'main' ? `<div class="suggestion-bar" id="e1rm-${key}"></div>` : '';
 
@@ -762,11 +861,12 @@ function buildLiftRows(key, state) {
   return `<div class="set-rows">${labels}${rows}</div><button class="add-set-btn" onclick="addSet('${key}', 'weight_reps')">+ Add Set</button>`;
 }
 
-function renderAssistCard(cfg, key, history) {
-  const isRepTotal = cfg.prescription === 'rep_total';
-
-  // Target 0 for this day — explain why instead of showing empty rows
-  if (isRepTotal && !cfg.target) {
+// rep_total card — jumps/throws and the three assistance categories.
+// Categories are independent: each can be completed or skipped on its
+// own, and nothing gates the session on all of them.
+function renderRepTotalCard(cfg, key, history) {
+  // Target 0 for this day — explain why rather than showing empty rows
+  if (!cfg.target) {
     return `<div class="ex-card-header">
         <div><div class="ex-card-name muted-name">${cfg.slot}</div><div class="ex-card-type">${cfg.type}</div></div>
         <div class="ex-target zeroed">Not today</div>
@@ -774,52 +874,82 @@ function renderAssistCard(cfg, key, history) {
       <div class="zero-reason">${cfg.reason || 'No target programmed for this day.'}</div>`;
   }
 
-  if (isRepTotal) {
-    const state = getState(key, 3, 'rep_total');
-    state.target = cfg.target;
-    state.sets.forEach(s => { if (s.exercise === undefined) s.exercise = cfg.options[0]; });
-    const counter = `<div class="rep-counter" id="repcount-${key}">0 / ${cfg.target}</div>`;
-    const setsHTML = buildRepTotalRows(cfg, key, state, history, slotExerciseOptions(cfg, history));
+  const state = getState(key, cfg.kind === 'jumps' ? 1 : 3, 'rep_total');
+  state.target = cfg.target;
+  state.sets.forEach(s => { if (s.exercise === undefined) s.exercise = cfg.options[0]; });
+
+  const skipped = !!state.skipped;
+  const skipBtn = `<button class="skip-btn ${skipped ? 'on' : ''}" onclick="toggleSkip('${key}')">${skipped ? 'Skipped ✓' : 'Skip'}</button>`;
+
+  if (skipped) {
     return `<div class="ex-card-header">
-        <div><div class="ex-card-name">${cfg.slot}</div><div class="ex-card-type">${cfg.type} · ${cfg.repRange}/set</div></div>
-        <div class="ex-target">Target ${cfg.target}</div>
+        <div><div class="ex-card-name muted-name">${cfg.slot}</div><div class="ex-card-type">${cfg.type}</div></div>
+        <div class="ex-target zeroed">Skipped</div>
       </div>
-      ${counter}
-      <div class="rt-hint">Mix any exercises toward the total — e.g. 25 pull-ups + 25 rows.</div>
-      ${setsHTML}
-      <textarea class="notes-area" placeholder="Notes…" onchange="updateNote('${key}', this.value)">${state.note}</textarea>`;
+      <div class="zero-reason">Marked skipped for this session — recorded as skipped, not as zero reps.</div>
+      <div class="skip-row">${skipBtn}</div>`;
   }
 
-  // legacy weight_reps assistance path
-  const inputType = cfg.inputType || 'weight_reps';
+  const counter = `<div class="rep-counter" id="repcount-${key}">0 / ${cfg.target}</div>`;
+  const setsHTML = buildRepTotalRows(cfg, key, state, history, slotExerciseOptions(cfg, history));
+  return `<div class="ex-card-header">
+      <div><div class="ex-card-name">${cfg.slot}</div><div class="ex-card-type">${cfg.type}</div></div>
+      <div class="ex-target">Target ${cfg.target}</div>
+    </div>
+    ${counter}
+    <div class="rt-hint">${cfg.hint || ''}</div>
+    ${setsHTML}
+    <div class="skip-row">${skipBtn}</div>
+    <textarea class="notes-area" placeholder="Notes…" onchange="updateNote('${key}', this.value)">${state.note}</textarea>`;
+}
+
+// Copenhagen plank — per-side logging, either reps or a timed hold.
+function renderExtraCard(cfg, key, history) {
+  const state = getState(key, cfg.sets, 'per_side');
+  const mode = state.mode || 'reps';
+  const inputType = mode === 'time' ? 'timed_per_side' : 'per_side';
   if (!variationState[key]) variationState[key] = cfg.options[0];
   const variation = variationState[key];
-  const state = getState(key, cfg.sets || 3, inputType);
   const lastInfo = findLastForName(history, variation);
   const last = lastInfo ? lastInfo.ex : null;
-  const dateStr = lastInfo ? fmt(lastInfo.date) : '';
 
-  let dropdown = '';
-  if (cfg.options.length > 1) {
-    dropdown = `<div class="variation-wrap"><select class="variation-select" onchange="selectVariation('${key}', this.value)">`
-      + cfg.options.map(o => `<option ${o === variation ? 'selected' : ''}>${o}</option>`).join('')
-      + `</select></div>`;
-  }
+  const dropdown = `<div class="variation-wrap"><select class="variation-select" onchange="selectVariation('${key}', this.value)">`
+    + cfg.options.map(o => `<option ${o === variation ? 'selected' : ''}>${o}</option>`).join('')
+    + `</select></div>`;
+
+  const modeToggle = `<div class="equip-toggle">
+    <button class="equip-btn ${mode === 'reps' ? 'active' : ''}" onclick="setExtraMode('${key}','reps')">Reps / side</button>
+    <button class="equip-btn ${mode === 'time' ? 'active' : ''}" onclick="setExtraMode('${key}','time')">Hold (sec)</button>
+  </div>`;
+
   let lastHint = '';
   if (last) {
-    const summary = last.sets.filter(s => s.weight || s.reps).map(s => s.weight ? `${s.weight}×${s.reps || '?'}` : `${s.reps}`).join(', ');
-    if (summary) lastHint = `<div class="last-session">Last ${dateStr}: ${summary}</div>`;
+    const summary = last.sets.map(x => x.duration ? `${x.duration}s` : (x.reps ? `${x.reps}` : '')).filter(Boolean).join(', ');
+    if (summary) lastHint = `<div class="last-session">Last ${fmt(lastInfo.date)}: ${summary}/side</div>`;
   }
-  let plateSection = '';
-  if (isBarbellLift(variation)) plateSection = `<div class="plate-calc" id="plates-${key}">${plateLadderHTML(key, state.sets)}</div>`;
-  const setsHTML = buildSetRows(key, inputType, state, last);
 
   return `<div class="ex-card-header">
-      <div><div class="ex-card-name">${dropdown ? cfg.slot : variation}</div><div class="ex-card-type">${cfg.type}</div></div>
-      <div class="ex-target">${cfg.target}</div>
+      <div><div class="ex-card-name">${cfg.slot}</div><div class="ex-card-type">${cfg.type}</div></div>
+      <div class="ex-target">${mode === 'time' ? cfg.timeTarget : cfg.repTarget}</div>
     </div>
-    ${dropdown}${lastHint}${plateSection}${setsHTML}
+    ${dropdown}${modeToggle}${lastHint}
+    ${buildSetRows(key, inputType, state, last)}
     <textarea class="notes-area" placeholder="Notes…" onchange="updateNote('${key}', this.value)">${state.note}</textarea>`;
+}
+
+function setExtraMode(key, mode) {
+  const st = logState[key];
+  if (!st) return;
+  st.mode = mode;
+  st.sets = st.sets.map(() => ({ ...blankSetFor(mode === 'time' ? 'timed_per_side' : 'per_side') }));
+  renderExercises();
+}
+
+function toggleSkip(key) {
+  const st = logState[key];
+  if (!st) return;
+  st.skipped = !st.skipped;
+  renderExercises();
 }
 
 // Menu for a slot = built-in defaults + every exercise ever logged in
@@ -844,10 +974,12 @@ function buildRepTotalRows(cfg, key, state, history, menu) {
     const select = `<select class="variation-select rt-ex" onchange="setRepExercise('${key}', ${i}, this.value)">`
       + optList.map(o => `<option ${o === ex ? 'selected' : ''}>${o}</option>`).join('')
       + `<option value="__custom__">✎ Custom…</option></select>`;
+    const loadInput = cfg.noLoad ? '' :
+      `<input class="set-input" type="number" inputmode="decimal" placeholder="${wph}" value="${s.weight || ''}" onchange="updateSet('${key}', ${i}, 'weight', this.value)" />`;
     rows += `<div class="rt-set">
       <div class="rt-head"><span class="set-num">${i+1}</span>${select}<button class="remove-set" onclick="removeSet('${key}', ${i})" title="Remove set">×</button></div>
-      <div class="rt-inputs">
-        <input class="set-input" type="number" inputmode="decimal" placeholder="${wph}" value="${s.weight || ''}" onchange="updateSet('${key}', ${i}, 'weight', this.value)" />
+      <div class="rt-inputs${cfg.noLoad ? ' one-col' : ''}">
+        ${loadInput}
         <input class="set-input" type="number" inputmode="numeric" placeholder="reps" value="${s.reps || ''}" oninput="updateSet('${key}', ${i}, 'reps', this.value);updateRepCounter('${key}')" />
       </div>
     </div>`;
@@ -982,8 +1114,29 @@ function selectDay(day) {
   document.getElementById(`pill-${day}`)?.classList.add('active');
   document.getElementById('dayFull').textContent = DAYS[day].full;
   document.getElementById('saveBtn').style.display = 'block';
+  getHistory().then(renderNextUp);
   renderExercises();
 }
+let pendingNext = null;
+function renderNextUp(history) {
+  const el = document.getElementById('nextUp');
+  if (!el) return;
+  const nu = nextUp(history);
+  pendingNext = nu;
+  const wk = nu.week === 'deload' ? 'Deload' : `Week ${nu.week}`;
+  const n = nu.pos + 1;
+  const onIt = nu.day === currentDay && String(nu.week) === String(currentWeek);
+  el.innerHTML = `Next up · session ${n} of ${SESSIONS_PER_CYCLE} — <b>${DAYS[nu.day].label}, ${wk}</b>`
+    + (onIt ? '' : ' <span style="text-decoration:underline">tap to jump</span>');
+}
+function jumpToNext() {
+  if (!pendingNext) return;
+  currentWeek = pendingNext.week;
+  config.week = currentWeek;
+  setWeekPills();
+  selectDay(pendingNext.day);
+}
+
 function setWeekPills() {
   const pills = document.querySelectorAll('.week-pill');
   pills.forEach(p => p.classList.remove('active'));
@@ -1001,9 +1154,11 @@ function selectWeek(w) {
 // ── Settings ──────────────────────────────────────────────────────
 function openSettings() {
   TM_FIELDS.forEach(([id, lift]) => { const el = document.getElementById(`tm-${id}`); if (el) el.value = config.tms[lift] || ''; });
-  document.getElementById('bbbPctInput').value = config.bbbPct;
   renderAssistTargetSettings();
   syncInSeasonBtn();
+  syncScheduleBtn();
+  const cy = document.getElementById('cycleInfo');
+  if (cy) cy.textContent = `Cycle ${config.cycle || 1} · BBB volume at ${bbbPct()}% of each volume lift's own TM`;
   document.getElementById('bar-weight').value = config.bar || 45;
   PLATE_DENOMS.forEach(d => { const el = document.getElementById(plateId(d)); if (el) el.value = config.plates[String(d)] ?? ''; });
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -1016,17 +1171,17 @@ function openSettings() {
 function renderAssistTargetSettings() {
   const card = document.getElementById('assistTargetCard');
   if (!card) return;
-  card.innerHTML = Object.keys(DAYS).map(d => {
-    const rows = ASSIST.map(a => {
-      const ov = config.assistTargets[d] && config.assistTargets[d][a.id];
-      const val = ov === undefined || ov === null || ov === '' ? DAYS[d].assist[a.id] : ov;
-      const why = DAYS[d].reasons[a.id] ? `<span class="at-why">${DAYS[d].reasons[a.id]}</span>` : '';
-      return `<div class="setting-row"><label>${a.slot}${why}</label>
-        <input id="at-${d}-${a.id}" type="number" inputmode="numeric" min="0" value="${val}"></div>`;
+  card.innerHTML = DAY_ORDER.map(d => {
+    const rows = ASSIST_IDS.map(id => {
+      const ov = config.assistTargets[d] && config.assistTargets[d][id];
+      const val = ov === undefined || ov === null || ov === '' ? programTarget(d, id) : ov;
+      const why = zeroReason(d, id) ? `<span class="at-why">${zeroReason(d, id)}</span>` : '';
+      return `<div class="setting-row"><label>${ASSIST_META[id].slot}${why}</label>
+        <input id="at-${d}-${id}" type="number" inputmode="numeric" min="0" value="${val}"></div>`;
     }).join('');
-    const extras = (DAYS[d].extras || []).map(id => EXTRAS[id]).filter(Boolean)
-      .map(e => `<div class="setting-row"><label>${e.slot}<span class="at-why">exempt · fixed ${e.target}</span></label></div>`).join('');
-    return `<div class="at-day"><div class="at-day-name">${DAYS[d].label} — ${DAYS[d].full.replace(/^Day \d+ — /, '')}</div>${rows}${extras}</div>`;
+    const extras = dayExtras(d)
+      .map(e => `<div class="setting-row"><label>${e.slot}<span class="at-why">exempt · ${e.repTarget}</span></label></div>`).join('');
+    return `<div class="at-day"><div class="at-day-name">${DAYS[d].full.replace(/^Day \d+ — /, '')}</div>${rows}${extras}</div>`;
   }).join('');
 }
 
@@ -1038,23 +1193,29 @@ function syncInSeasonBtn() {
 }
 async function toggleInSeason() {
   config.inSeason = !config.inSeason;
-  syncInSeasonBtn();
+  if (config.inSeason) config.schedule = '3day';    // in-season prefers 3-day
+  syncInSeasonBtn(); syncScheduleBtn();
   logState = {};
   await saveConfig();
-  showToast(config.inSeason ? 'In-season: targets halved, BBB 3×10' : 'Off-season: full targets, BBB 5×10');
+  showToast(config.inSeason ? 'In-season: targets halved, BBB 3×10, 3-day' : 'Off-season: full targets, BBB 5×10');
+}
+
+function syncScheduleBtn() {
+  const b = document.getElementById('scheduleToggle');
+  if (!b) return;
+  b.textContent = config.schedule === '3day' ? '3-day' : '4-day';
+  b.classList.toggle('on', config.schedule === '3day');
 }
 
 async function saveSettings() {
   TM_FIELDS.forEach(([id, lift]) => { const el = document.getElementById(`tm-${id}`); config.tms[lift] = parseFloat(el.value) || 0; });
-  const b = parseFloat(document.getElementById('bbbPctInput').value);
-  config.bbbPct = b > 0 ? b : 50;
-  Object.keys(DAYS).forEach(d => {
+  DAY_ORDER.forEach(d => {
     config.assistTargets[d] = config.assistTargets[d] || {};
-    ASSIST.forEach(a => {
-      const el = document.getElementById(`at-${d}-${a.id}`);
+    ASSIST_IDS.forEach(id => {
+      const el = document.getElementById(`at-${d}-${id}`);
       if (!el) return;
       const v = parseInt(el.value);
-      config.assistTargets[d][a.id] = isNaN(v) || v < 0 ? DAYS[d].assist[a.id] : v;
+      config.assistTargets[d][id] = isNaN(v) || v < 0 ? programTarget(d, id) : v;
     });
   });
   config.bar = parseFloat(document.getElementById('bar-weight').value) || 45;
@@ -1069,12 +1230,22 @@ async function startNewCycle() {
   config.tms['Bench Press']    = (config.tms['Bench Press'] || 0) + 5;
   config.tms['Squat']          = (config.tms['Squat'] || 0) + 10;
   config.tms['Deadlift']       = (config.tms['Deadlift'] || 0) + 10;
+  ['Front Squat','Romanian Deadlift'].forEach(l => { if (config.tms[l]) config.tms[l] += 10; });
+  config.cycle = (config.cycle || 1) + 1;
+  config.cycleStartedAt = Date.now();
   currentWeek = 1; config.week = 1;
   logState = {};
   await saveConfig();
   setWeekPills();
   openSettings();
-  showToast('New cycle — TMs bumped ✓');
+  const untested = ['Front Squat','Romanian Deadlift'].filter(needsTM);
+  showToast(untested.length ? `Cycle ${config.cycle} — test a TM for ${untested.join(' & ')}` : `Cycle ${config.cycle} · BBB ${bbbPct()}%`);
+}
+
+async function toggleSchedule() {
+  config.schedule = config.schedule === '3day' ? '4day' : '3day';
+  syncScheduleBtn();
+  await saveConfig();
 }
 
 // ── Save / Edit ───────────────────────────────────────────────────
@@ -1085,6 +1256,13 @@ async function saveWorkout() {
     const key = keyFor(cfg);
     const state = logState[key];
     if (!state) return;
+
+    // A skipped category is recorded as skipped — distinct from 0 reps
+    if (state.skipped) {
+      saved.push({ slot: cfg.slot, type: cfg.type, kind: cfg.kind, prescription:'rep_total',
+        target: cfg.target, name: cfg.slot, week: currentWeek, skipped: true, sets: [], note: state.note || '' });
+      return;
+    }
 
     // rep_total: split sets by exercise into one record each
     if (cfg.prescription === 'rep_total') {
@@ -1102,9 +1280,10 @@ async function saveWorkout() {
 
     if (!state.sets.some(s => s.weight || s.reps || s.duration)) return;
     const name = cfg.kind === 'bbb' ? `${cfg.lift} (BBB)`
-      : cfg.kind === 'assist' ? (variationState[key] || cfg.options[0])
-      : cfg.lift;
-    saved.push({ slot: cfg.slot, type: cfg.type, kind: cfg.kind, prescription: cfg.prescription || 'sets_reps', name, week: currentWeek, sets: state.sets, note: state.note });
+      : cfg.lift || variationState[key] || (cfg.options && cfg.options[0]) || cfg.slot;
+    const rec = { slot: cfg.slot, type: cfg.type, kind: cfg.kind, prescription: cfg.prescription || 'sets_reps', name, week: currentWeek, sets: state.sets, note: state.note };
+    if (cfg.kind === 'extra') rec.mode = state.mode || 'reps';
+    saved.push(rec);
   });
   if (!saved.length) { showToast('Log at least one set first'); return; }
 
@@ -1148,8 +1327,13 @@ async function loadForEdit(id) {
     if (cfg.prescription === 'rep_total') {
       // multiple records can share one slot — merge them, tagging each set's exercise
       if (!logState[key]) logState[key] = { sets: [], note: ex.note || '' };
-      logState[key].sets.push(...ex.sets.map(s => ({ ...s, exercise: s.exercise || ex.name })));
+      if (ex.skipped) logState[key].skipped = true;
+      logState[key].sets.push(...(ex.sets || []).map(s => ({ ...s, exercise: s.exercise || ex.name })));
+      if (!logState[key].sets.length) logState[key].sets.push({ ...blankSetFor('rep_total'), exercise: cfg.options[0] });
       if (ex.note && !logState[key].note) logState[key].note = ex.note;
+    } else if (cfg.kind === 'extra') {
+      variationState[key] = ex.name;
+      logState[key] = { sets: ex.sets.map(s => ({...s})), note: ex.note || '', mode: ex.mode || 'reps' };
     } else {
       if (cfg.kind === 'assist') variationState[key] = ex.name;
       logState[key] = { sets: ex.sets.map(s => ({...s})), note: ex.note || '' };
@@ -1354,10 +1538,12 @@ function showToast(msg) {
 document.getElementById('todayDate').textContent = new Date().toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' });
 (async () => {
   await getConfig();
+  const history = await getHistory();
+  const nu = nextUp(history);
+  currentWeek = nu.week;
   setWeekPills();
-  selectDay('D1');
-  const anyTM = Object.values(config.tms).some(v => v > 0);
-  if (!anyTM) openSettings();
+  renderNextUp(history);
+  selectDay(nu.day);
 })();
 
 // Register service worker for PWA caching
