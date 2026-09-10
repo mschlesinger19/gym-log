@@ -529,10 +529,16 @@ const WEEK_ORDER = [1, 2, 3, 'deload'];
 // lift's. Percentage climbs by cycle and caps at 60%.
 function bbbPct() { const c = config.cycle || 1; return c <= 1 ? 55 : c === 2 ? 57.5 : 60; }
 function bbbSetCount() { return config.inSeason ? 3 : 5; }
+// An empty bar is the floor: a light TM can put a warm-up percentage
+// below the bar, and you can't load less than the bar itself.
+function clampToBar(w) {
+  const bar = config.bar || 45;
+  return w && w < bar ? bar : w;
+}
 function bbbLoadFor(lift) {
   const tm = config.tms[lift] || 0;
-  if (tm) return roundTo5(tm * bbbPct() / 100);
-  return BBB_START_LOAD[lift] || 0;               // untested lift, cycle-1 fallback
+  if (tm) return clampToBar(roundTo5(tm * bbbPct() / 100));
+  return clampToBar(BBB_START_LOAD[lift] || 0);   // untested lift, cycle-1 fallback
 }
 function needsTM(lift) { return !config.tms[lift] && BBB_START_LOAD[lift] !== undefined; }
 
@@ -672,7 +678,12 @@ function mainRows(lift) {
   const rows = [];
   (scheme.warmup || []).forEach(([pct, reps]) => rows.push({ pct, reps, warmup:true, amrap:false }));
   scheme.work.forEach(([pct, reps, amrap]) => rows.push({ pct, reps, warmup:false, amrap:!!amrap }));
-  return rows.map(r => ({ ...r, weight: tm ? roundTo5(tm * r.pct / 100) : '' }));
+  return rows.map(r => {
+    if (!tm) return { ...r, weight: '' };
+    const raw = roundTo5(tm * r.pct / 100);
+    const weight = clampToBar(raw);
+    return { ...r, weight, rawWeight: raw, atBar: weight !== raw };
+  });
 }
 // Prescribed rows for the BBB volume work — always off the VOLUME
 // lift's own TM, falling back to a fixed load for untested lifts.
@@ -819,6 +830,10 @@ function renderLiftCard(cfg, key, history) {
   const typeLine = isMain
     ? `${cfg.type} · TM ${tm || '—'}`
     : (tm ? `${cfg.type} · ${bbbPct()}% of ${lift} TM ${tm}` : `${cfg.type} · untested — fixed ${bbbLoadFor(lift)} lb`);
+  const barred = rows.filter(r => r.atBar);
+  const barNote = barred.length
+    ? `<div class="last-session">${barred.map(r => r.pct + '%').join(' & ')} works out to ${barred.map(r => r.rawWeight).join('/')} lb — under the ${config.bar || 45} lb bar, so ${barred.length > 1 ? 'those sets are' : "that set is"} the empty bar.</div>`
+    : '';
   const warn = isMain && !tm
     ? `<div class="tm-warn">Set your Training Max in ⚙ Settings to see weights.</div>`
     : (!isMain && needsTM(lift) && (config.cycle || 1) > 1
@@ -841,7 +856,7 @@ function renderLiftCard(cfg, key, history) {
       <div><div class="ex-card-name">${lift}</div><div class="ex-card-type">${typeLine}</div></div>
       <div class="ex-target">${target}</div>
     </div>
-    ${warn}${e1rmDiv}${lastHint}${plateSection}${setsHTML}
+    ${warn}${e1rmDiv}${lastHint}${barNote}${plateSection}${setsHTML}
     <textarea class="notes-area" placeholder="Notes…" onchange="updateNote('${key}', this.value)">${state.note}</textarea>`;
 }
 
