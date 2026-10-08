@@ -146,6 +146,16 @@
   .rep-counter.complete { color: #000; background: var(--accent); border-color: var(--accent); }
   .remove-set { background: none; border: none; color: var(--muted2); font-size: 1.2rem; cursor: pointer; width: 32px; }
   .remove-set:active { color: var(--red); }
+  .edit-banner {
+    background: #2a2a00; border: 1px solid var(--accent); border-radius: 10px;
+    padding: 10px 14px; margin: 0 0 12px; font-size: 0.8rem; color: var(--accent);
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  }
+  .edit-banner button {
+    background: none; border: 1px solid var(--accent); color: var(--accent);
+    font-family: 'DM Sans', sans-serif; font-size: 0.72rem; text-transform: uppercase;
+    letter-spacing: 0.05em; border-radius: 6px; padding: 6px 12px; cursor: pointer; flex-shrink: 0;
+  }
   .next-up {
     background: var(--card); border: 1px solid var(--accent2); border-radius: 10px;
     padding: 10px 14px; margin: 0 0 14px; font-size: 0.8rem; color: var(--accent2); cursor: pointer;
@@ -367,6 +377,7 @@
     <div class="week-pill" onclick="selectWeek(3)">Wk 3 · 75/85/95</div>
     <div class="week-pill" onclick="selectWeek('deload')">Wk 4 · Deload</div>
   </div>
+  <div class="edit-banner" id="editBanner" hidden></div>
   <div class="next-up" id="nextUp" onclick="jumpToNext()"></div>
   <div class="day-full" id="dayFull"></div>
   <div id="exerciseArea"></div>
@@ -630,6 +641,7 @@ let currentWeek = 1;        // 1, 2, 3, or 'deload'
 let logState = {};          // { key: { sets:[...], note } }
 let variationState = {};    // { key: chosenVariation }
 let editingId = null;
+let editingMeta = null;   // { id, day, week, date } — guards the PATCH target
 let historyCache = null;
 let progressChart = null;
 let selectedLift = null;
@@ -711,7 +723,7 @@ async function getHistory(force = false) {
 
 async function getConfig() {
   try {
-    const rows = await dbFetch(`workouts?day=eq.${CONFIG_DAY}&limit=1`);
+    const rows = await dbFetch(`workouts?day=eq.${CONFIG_DAY}&order=created_at.asc&limit=1`);
     if (rows && rows.length) {
       configId = rows[0].id;
       const c = rows[0].exercises || {};
@@ -800,6 +812,8 @@ async function renderExercises() {
   area.innerHTML = '<div style="padding:20px;text-align:center;color:var(--muted);font-size:0.85rem;">Loading…</div>';
   const history = await getHistory();
   area.innerHTML = '';
+
+  renderEditBanner();
 
   const slots = getSlots(currentDay);
   slots.forEach(cfg => {
@@ -1124,6 +1138,7 @@ function addSet(key, inputType) {
 
 // ── Day / Week ────────────────────────────────────────────────────
 function selectDay(day) {
+  if (editingId && editingMeta && editingMeta.day !== day) { cancelEdit(true); showToast('Edit cancelled — logging a new session'); }
   currentDay = day;
   document.querySelectorAll('.day-pill').forEach(p => p.classList.remove('active'));
   document.getElementById(`pill-${day}`)?.classList.add('active');
@@ -1133,6 +1148,16 @@ function selectDay(day) {
   renderExercises();
 }
 let pendingNext = null;
+function renderEditBanner() {
+  const el = document.getElementById('editBanner');
+  if (!el) return;
+  if (!editingId || !editingMeta) { el.hidden = true; el.innerHTML = ''; return; }
+  el.hidden = false;
+  const lbl = DAYS[editingMeta.day] ? DAYS[editingMeta.day].label : editingMeta.day;
+  el.innerHTML = `<span>Editing your ${lbl} session from ${editingMeta.date} — saving replaces it.</span>`
+    + `<button onclick="cancelEdit()">Cancel</button>`;
+}
+
 function renderNextUp(history) {
   const el = document.getElementById('nextUp');
   if (!el) return;
@@ -1159,6 +1184,7 @@ function setWeekPills() {
   if (pills[idx]) pills[idx].classList.add('active');
 }
 function selectWeek(w) {
+  if (editingId && editingMeta && String(editingMeta.week) !== String(w)) { cancelEdit(true); showToast('Edit cancelled — logging a new session'); }
   currentWeek = w;
   config.week = w;
   setWeekPills();
@@ -1305,23 +1331,40 @@ async function saveWorkout() {
   const btn = document.getElementById('saveBtn');
   btn.textContent = 'Saving…'; btn.disabled = true;
 
+  // Only overwrite the row we actually opened for editing, and only while
+  // still on its day and week. Anything else is a NEW session — never a
+  // silent PATCH over an unrelated record.
+  const editingHere = editingId && editingMeta
+    && editingMeta.day === currentDay && String(editingMeta.week) === String(currentWeek);
+
   try {
-    if (editingId) {
+    if (editingHere) {
       await dbFetch(`workouts?id=eq.${editingId}`, { method:'PATCH', body: JSON.stringify({ day: currentDay, week: String(currentWeek), exercises: saved }) });
-      editingId = null;
       showToast('Workout updated ✓');
     } else {
       await dbFetch('workouts', { method:'POST', body: JSON.stringify({ day: currentDay, week: String(currentWeek), exercises: saved }) });
       showToast('Workout saved ✓');
     }
+    editingId = null; editingMeta = null;
     historyCache = null;
   } catch(e) {
     showToast('Save failed — check connection'); console.error(e);
   } finally {
     btn.disabled = false;
-    btn.textContent = 'Save Workout';
+    btn.textContent = editingId ? 'Update Workout' : 'Save Workout';
   }
   logState = {}; renderExercises();
+}
+
+// Leaving the edit cleanly — nothing is written, the row stays as it was.
+function cancelEdit(silent) {
+  if (!editingId) return;
+  editingId = null; editingMeta = null;
+  logState = {};
+  const btn = document.getElementById('saveBtn');
+  if (btn) btn.textContent = 'Save Workout';
+  if (!silent) showToast('Edit cancelled — nothing changed');
+  renderExercises();
 }
 
 async function loadForEdit(id) {
@@ -1333,6 +1376,7 @@ async function loadForEdit(id) {
   editingId = id;
   currentDay = entry.day;
   currentWeek = normWeek(entry.week);
+  editingMeta = { id, day: entry.day, week: normWeek(entry.week), date: fmt(entry.created_at) };
   logState = {};
   const slots = getSlots(currentDay);
   entry.exercises.forEach(ex => {
