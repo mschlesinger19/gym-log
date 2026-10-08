@@ -397,6 +397,7 @@
     <div class="setting-row"><label>Deadlift</label><input id="tm-dl" type="number" inputmode="decimal" placeholder="lb"></div>
     <div class="setting-row"><label>Front Squat<span class="at-why">untested — 95 lb until set</span></label><input id="tm-fsq" type="number" inputmode="decimal" placeholder="untested"></div>
     <div class="setting-row"><label>Romanian Deadlift<span class="at-why">untested — 125 lb until set</span></label><input id="tm-rdl" type="number" inputmode="decimal" placeholder="untested"></div>
+    <div class="setting-row"><label>Cycle<span class="at-why">sets BBB %: 1 → 55%, 2 → 57.5%, 3+ → 60%</span></label><input id="cycle-num" type="number" inputmode="numeric" min="1" placeholder="1"></div>
   </div>
   <div class="settings-intro" id="cycleInfo"></div>
   <div class="settings-intro" id="configInfo"></div>
@@ -1287,6 +1288,7 @@ function openSettings() {
     else if (!configLoadOk) { ci.innerHTML = `<b style="color:var(--red)">Settings could not be read from the server.</b>`; }
     else { ci.textContent = `Settings synced${configId ? '' : ' — not yet saved to the server'}.`; }
   }
+  document.getElementById('cycle-num').value = config.cycle || 1;
   document.getElementById('bar-weight').value = config.bar || 45;
   PLATE_DENOMS.forEach(d => { const el = document.getElementById(plateId(d)); if (el) el.value = config.plates[String(d)] ?? ''; });
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -1346,6 +1348,8 @@ async function saveSettings() {
       config.assistTargets[d][id] = isNaN(v) || v < 0 ? programTarget(d, id) : v;
     });
   });
+  const cyc = parseInt(document.getElementById('cycle-num').value);
+  config.cycle = cyc > 0 ? cyc : 1;
   config.bar = parseFloat(document.getElementById('bar-weight').value) || 45;
   PLATE_DENOMS.forEach(d => { const el = document.getElementById(plateId(d)); const v = parseInt(el.value); config.plates[String(d)] = isNaN(v) ? 0 : v; });
   await saveConfig();
