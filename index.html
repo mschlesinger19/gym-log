@@ -146,6 +146,10 @@
   .rep-counter.complete { color: #000; background: var(--accent); border-color: var(--accent); }
   .remove-set { background: none; border: none; color: var(--muted2); font-size: 1.2rem; cursor: pointer; width: 32px; }
   .remove-set:active { color: var(--red); }
+  /* [hidden] comes from the UA stylesheet, so ANY author display: wins
+     over it. Without this, a hidden flex/grid element still renders as
+     an empty shell. */
+  [hidden] { display: none !important; }
   .edit-banner {
     background: #2a2a00; border: 1px solid var(--accent); border-radius: 10px;
     padding: 10px 14px; margin: 0 0 12px; font-size: 0.8rem; color: var(--accent);
@@ -393,6 +397,7 @@
     <div class="setting-row"><label>Deadlift</label><input id="tm-dl" type="number" inputmode="decimal" placeholder="lb"></div>
     <div class="setting-row"><label>Front Squat<span class="at-why">untested — 95 lb until set</span></label><input id="tm-fsq" type="number" inputmode="decimal" placeholder="untested"></div>
     <div class="setting-row"><label>Romanian Deadlift<span class="at-why">untested — 125 lb until set</span></label><input id="tm-rdl" type="number" inputmode="decimal" placeholder="untested"></div>
+    <div class="setting-row"><label>Cycle<span class="at-why">sets BBB %: 1 → 55%, 2 → 57.5%, 3+ → 60%</span></label><input id="cycle-num" type="number" inputmode="numeric" min="1" placeholder="1"></div>
   </div>
   <div class="settings-intro" id="cycleInfo"></div>
   <div class="settings-intro" id="configInfo"></div>
@@ -914,7 +919,10 @@ function renderLiftCard(cfg, key, history) {
   const rows = isMain ? mainRows(lift) : bbbRows(lift);
   const state = getLiftState(key, rows);
   const scheme = WEEK_SCHEMES[currentWeek];
-  const target = isMain ? scheme.label : `${bbbSetCount()} × 10 @ ${bbbPct()}%`;
+  // An untested volume lift uses its fixed starting load — don't advertise
+  // a percentage that isn't being applied to anything.
+  const target = isMain ? scheme.label
+    : (tm ? `${bbbSetCount()} × 10 @ ${bbbPct()}%` : `${bbbSetCount()} × 10 · fixed ${bbbLoadFor(lift)} lb`);
   const typeLine = isMain
     ? `${cfg.type} · TM ${tm || '—'}`
     : (tm ? `${cfg.type} · ${bbbPct()}% of ${lift} TM ${tm}` : `${cfg.type} · untested — fixed ${bbbLoadFor(lift)} lb`);
@@ -1280,6 +1288,7 @@ function openSettings() {
     else if (!configLoadOk) { ci.innerHTML = `<b style="color:var(--red)">Settings could not be read from the server.</b>`; }
     else { ci.textContent = `Settings synced${configId ? '' : ' — not yet saved to the server'}.`; }
   }
+  document.getElementById('cycle-num').value = config.cycle || 1;
   document.getElementById('bar-weight').value = config.bar || 45;
   PLATE_DENOMS.forEach(d => { const el = document.getElementById(plateId(d)); if (el) el.value = config.plates[String(d)] ?? ''; });
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -1339,6 +1348,8 @@ async function saveSettings() {
       config.assistTargets[d][id] = isNaN(v) || v < 0 ? programTarget(d, id) : v;
     });
   });
+  const cyc = parseInt(document.getElementById('cycle-num').value);
+  config.cycle = cyc > 0 ? cyc : 1;
   config.bar = parseFloat(document.getElementById('bar-weight').value) || 45;
   PLATE_DENOMS.forEach(d => { const el = document.getElementById(plateId(d)); const v = parseInt(el.value); config.plates[String(d)] = isNaN(v) ? 0 : v; });
   await saveConfig();
@@ -1451,6 +1462,7 @@ function cancelEdit(silent) {
   logState = {};
   const btn = document.getElementById('saveBtn');
   if (btn) btn.textContent = 'Save Workout';
+  renderEditBanner();            // clear now, not after the async re-render
   if (!silent) showToast('Edit cancelled — nothing changed');
   renderExercises();
 }
