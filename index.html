@@ -918,7 +918,10 @@ function renderLiftCard(cfg, key, history) {
   const rows = isMain ? mainRows(lift) : bbbRows(lift);
   const state = getLiftState(key, rows);
   const scheme = WEEK_SCHEMES[currentWeek];
-  const target = isMain ? scheme.label : `${bbbSetCount()} × 10 @ ${bbbPct()}%`;
+  // An untested volume lift uses its fixed starting load — don't advertise
+  // a percentage that isn't being applied to anything.
+  const target = isMain ? scheme.label
+    : (tm ? `${bbbSetCount()} × 10 @ ${bbbPct()}%` : `${bbbSetCount()} × 10 · fixed ${bbbLoadFor(lift)} lb`);
   const typeLine = isMain
     ? `${cfg.type} · TM ${tm || '—'}`
     : (tm ? `${cfg.type} · ${bbbPct()}% of ${lift} TM ${tm}` : `${cfg.type} · untested — fixed ${bbbLoadFor(lift)} lb`);
