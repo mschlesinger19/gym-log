@@ -395,6 +395,7 @@
     <div class="setting-row"><label>Romanian Deadlift<span class="at-why">untested — 125 lb until set</span></label><input id="tm-rdl" type="number" inputmode="decimal" placeholder="untested"></div>
   </div>
   <div class="settings-intro" id="cycleInfo"></div>
+  <div class="settings-intro" id="configInfo"></div>
   <div class="settings-subhead">Schedule</div>
   <div class="settings-intro">Same four days either way. On a 3-day week they roll Mon/Wed/Fri, so a cycle takes ~5 weeks — position is tracked by <b>sessions completed</b>, not the calendar.</div>
   <div class="setting-card">
@@ -647,9 +648,13 @@ let progressChart = null;
 let selectedLift = null;
 // assistTargets holds PER-DAY overrides only: { D1: { pull: 50, ... } }.
 // Anything unset falls back to the day's program default in DAYS.
+const DEFAULT_PLATES = { '45':2, '35':2, '25':2, '10':2, '5':8, '2.5':4 };
 let config = { tms: { ...TM_DEFAULTS }, week: 1, cycle: 1, cycleStartedAt: 0, schedule: '4day',
-  bar: 45, plates: { '45':2, '35':2, '25':2, '10':2, '5':8, '2.5':4 },
+  bar: 45, plates: { ...DEFAULT_PLATES },
   assistTargets: {}, skipped: {}, inSeason: false };
+let configRowCount = 0;      // >1 means duplicate config rows were found
+let configLoadOk = false;    // false means we must NOT create a replacement row
+let configNote = '';         // surfaced in Settings
 let configId = null;
 
 // ── Helpers ───────────────────────────────────────────────────────
@@ -721,33 +726,102 @@ async function getHistory(force = false) {
   } catch(e) { console.error('Failed to load history', e); return []; }
 }
 
+function applyConfigObject(c) {
+  const tms = { ...TM_DEFAULTS };
+  Object.entries(c.tms || {}).forEach(([k, v]) => { if (parseFloat(v) > 0) tms[k] = parseFloat(v); });
+  config = { tms, week: normWeek(c.week || 1), cycle: parseInt(c.cycle) || 1, cycleStartedAt: c.cycleStartedAt || 0,
+    schedule: c.schedule === '3day' ? '3day' : '4day', bar: c.bar || 45,
+    plates: { ...DEFAULT_PLATES, ...(c.plates || {}) }, assistTargets: normAssistTargets(c.assistTargets),
+    skipped: {}, inSeason: !!c.inSeason };
+  currentWeek = config.week;
+}
+
+// Duplicate config rows split your settings across records — the cycle
+// bump lands on one while the app keeps reading another. Fold them into
+// a single row: the furthest-along cycle wins, and any customisation
+// from the other rows is carried over.
+function mergeConfigRows(rows) {
+  const objs = rows.map(r => r.exercises || {});
+  const base = { ...objs.reduce((a, b) => (parseInt(b.cycle) || 1) > (parseInt(a.cycle) || 1) ? b : a, objs[0]) };
+  const isDefaultPlates = p => !p || JSON.stringify({ ...DEFAULT_PLATES, ...p }) === JSON.stringify(DEFAULT_PLATES);
+  objs.forEach(o => {
+    if (o === base) return;
+    if (isDefaultPlates(base.plates) && !isDefaultPlates(o.plates)) base.plates = o.plates;
+    if ((!base.bar || base.bar === 45) && o.bar && o.bar !== 45) base.bar = o.bar;
+    if (!Object.keys(base.assistTargets || {}).length && Object.keys(o.assistTargets || {}).length) base.assistTargets = o.assistTargets;
+    if (base.schedule !== '3day' && o.schedule === '3day') base.schedule = o.schedule;
+    if (!base.inSeason && o.inSeason) base.inSeason = true;
+  });
+  return base;
+}
+
 async function getConfig() {
+  configLoadOk = false; configNote = '';
+  let rows;
   try {
-    const rows = await dbFetch(`workouts?day=eq.${CONFIG_DAY}&order=created_at.asc&limit=1`);
-    if (rows && rows.length) {
-      configId = rows[0].id;
-      const c = rows[0].exercises || {};
-      const tms = { ...TM_DEFAULTS };
-      Object.entries(c.tms || {}).forEach(([k, v]) => { if (parseFloat(v) > 0) tms[k] = parseFloat(v); });
-      config = { tms, week: normWeek(c.week || 1), cycle: parseInt(c.cycle) || 1, cycleStartedAt: c.cycleStartedAt || 0,
-        schedule: c.schedule === '3day' ? '3day' : '4day', bar: c.bar || 45,
-        plates: { ...config.plates, ...(c.plates || {}) }, assistTargets: normAssistTargets(c.assistTargets),
-        skipped: {}, inSeason: !!c.inSeason };
-      currentWeek = config.week;
-    }
-  } catch(e) { console.error('config load failed', e); }
+    rows = await dbFetch(`workouts?day=eq.${CONFIG_DAY}&order=created_at.asc`);
+  } catch(e) {
+    console.error('config load failed', e);
+    configNote = 'Could not read settings — not saving until the connection is back.';
+    return;                                   // configId stays null; no new row will be created
+  }
+  configLoadOk = true;
+  configRowCount = rows.length;
+  if (!rows.length) { configId = null; return; }
+
+  if (rows.length === 1) { configId = rows[0].id; applyConfigObject(rows[0].exercises || {}); return; }
+
+  // more than one config row — consolidate onto the oldest and drop the rest
+  const merged = mergeConfigRows(rows);
+  configId = rows[0].id;
+  applyConfigObject(merged);
+  try {
+    await dbFetch(`workouts?id=eq.${configId}`, { method:'PATCH', body: JSON.stringify(configPayload()) });
+    for (const r of rows.slice(1)) await dbFetch(`workouts?id=eq.${r.id}`, { method:'DELETE' });
+    configRowCount = 1;
+    configNote = `Found ${rows.length} settings records and merged them into one — please double-check your training maxes.`;
+  } catch(e) {
+    console.error('config consolidation failed', e);
+    configNote = `Found ${rows.length} settings records; could not merge them.`;
+  }
+}
+
+function configPayload() {
+  return { day: CONFIG_DAY, week: null, exercises: { tms: config.tms, week: currentWeek,
+    cycle: config.cycle, cycleStartedAt: config.cycleStartedAt, schedule: config.schedule,
+    bar: config.bar, plates: config.plates, assistTargets: config.assistTargets, inSeason: config.inSeason } };
+}
+
+// A PostgREST PATCH whose filter matches nothing returns 200 with an
+// empty array — it looks like success but writes nothing. Check what came
+// back, and create the row instead of silently dropping the change.
+async function writeConfigRow(payload) {
+  if (configId) {
+    const r = await dbFetch(`workouts?id=eq.${configId}`, { method:'PATCH', body: JSON.stringify(payload) });
+    if (Array.isArray(r) && r.length) return true;
+    console.warn('config PATCH matched no rows; recreating');
+    configId = null;
+  }
+  if (!configLoadOk) return false;             // never duplicate on a failed read
+  const created = await dbFetch('workouts', { method:'POST', body: JSON.stringify(payload) });
+  if (Array.isArray(created) && created[0] && created[0].id) { configId = created[0].id; configRowCount = 1; return true; }
+  return false;
 }
 
 async function saveConfig(opts = {}) {
-  const payload = { day: CONFIG_DAY, week: null, exercises: { tms: config.tms, week: currentWeek,
-    cycle: config.cycle, cycleStartedAt: config.cycleStartedAt, schedule: config.schedule,
-    bar: config.bar, plates: config.plates, assistTargets: config.assistTargets, inSeason: config.inSeason } };
   try {
-    if (configId) await dbFetch(`workouts?id=eq.${configId}`, { method:'PATCH', body: JSON.stringify(payload) });
-    else { const r = await dbFetch('workouts', { method:'POST', body: JSON.stringify(payload) }); if (r && r[0]) configId = r[0].id; }
+    const ok = await writeConfigRow(configPayload());
     historyCache = null;
+    if (!ok) { showToast('Settings NOT saved — try again'); configNote = 'Last save did not persist.'; return false; }
+    configNote = '';
     if (!opts.silent) showToast('Settings saved ✓');
-  } catch(e) { if (!opts.silent) showToast('Save failed'); console.error(e); }
+    return true;
+  } catch(e) {
+    console.error(e);
+    showToast('Settings NOT saved — check connection');
+    configNote = 'Last save failed: ' + (e.message || 'unknown error');
+    return false;
+  }
 }
 
 // Most recent logged session of a given exercise (across any day)
@@ -1200,6 +1274,12 @@ function openSettings() {
   syncScheduleBtn();
   const cy = document.getElementById('cycleInfo');
   if (cy) cy.textContent = `Cycle ${config.cycle || 1} · BBB volume at ${bbbPct()}% of each volume lift's own TM`;
+  const ci = document.getElementById('configInfo');
+  if (ci) {
+    if (configNote) { ci.innerHTML = `<b style="color:var(--red)">${configNote}</b>`; }
+    else if (!configLoadOk) { ci.innerHTML = `<b style="color:var(--red)">Settings could not be read from the server.</b>`; }
+    else { ci.textContent = `Settings synced${configId ? '' : ' — not yet saved to the server'}.`; }
+  }
   document.getElementById('bar-weight').value = config.bar || 45;
   PLATE_DENOMS.forEach(d => { const el = document.getElementById(plateId(d)); if (el) el.value = config.plates[String(d)] ?? ''; });
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -1267,6 +1347,7 @@ async function saveSettings() {
   selectDay(currentDay);
 }
 async function startNewCycle() {
+  const before = { tms: { ...config.tms }, cycle: config.cycle, cycleStartedAt: config.cycleStartedAt, week: config.week };
   config.tms['Overhead Press'] = (config.tms['Overhead Press'] || 0) + 5;
   config.tms['Bench Press']    = (config.tms['Bench Press'] || 0) + 5;
   config.tms['Squat']          = (config.tms['Squat'] || 0) + 10;
@@ -1276,7 +1357,14 @@ async function startNewCycle() {
   config.cycleStartedAt = Date.now();
   currentWeek = 1; config.week = 1;
   logState = {};
-  await saveConfig();
+  const ok = await saveConfig({ silent: true });
+  if (!ok) {                                   // roll the bump back rather than show numbers that were never stored
+    config.tms = before.tms; config.cycle = before.cycle; config.cycleStartedAt = before.cycleStartedAt;
+    currentWeek = before.week; config.week = before.week;
+    setWeekPills(); openSettings();
+    showToast('Cycle NOT advanced — nothing was saved');
+    return;
+  }
   setWeekPills();
   openSettings();
   const untested = ['Front Squat','Romanian Deadlift'].filter(needsTM);
