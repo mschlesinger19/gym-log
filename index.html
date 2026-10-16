@@ -632,13 +632,34 @@ function dayExtras(day) { return (day === 'D2' || day === 'D4') ? [COPENHAGEN] :
 // A 3-day schedule rolls the same four days Mon/Wed/Fri, so a cycle
 // takes ~5 weeks instead of 4. Either way the position is a count.
 const SESSIONS_PER_CYCLE = 16;                    // 4 days × 4 weeks
-function sessionsThisCycle(history) {
+
+// Which (week, day) slots already have a logged session this cycle.
+// Counting rows is not enough: a missed save, or logging out of order,
+// would shift every later suggestion by one and never recover.
+function loggedThisCycle(history) {
   const start = config.cycleStartedAt || 0;
-  return (history || []).filter(e => DAYS[e.day] && new Date(e.created_at).getTime() >= start).length;
+  const done = new Set();
+  (history || []).forEach(e => {
+    if (!DAYS[e.day]) return;
+    if (new Date(e.created_at).getTime() < start) return;
+    done.add(`${normWeek(e.week)}|${e.day}`);
+  });
+  return done;
 }
+function sessionsThisCycle(history) { return loggedThisCycle(history).size; }
+
+// Next up = the first slot with no session logged against it, so
+// backfilling a forgotten workout self-corrects the suggestion.
 function nextUp(history) {
-  const pos = sessionsThisCycle(history) % SESSIONS_PER_CYCLE;
-  return { pos, day: DAY_ORDER[pos % 4], week: WEEK_ORDER[Math.floor(pos / 4)] };
+  const done = loggedThisCycle(history);
+  for (let w = 0; w < WEEK_ORDER.length; w++) {
+    for (let d = 0; d < DAY_ORDER.length; d++) {
+      if (!done.has(`${WEEK_ORDER[w]}|${DAY_ORDER[d]}`)) {
+        return { pos: w * DAY_ORDER.length + d, day: DAY_ORDER[d], week: WEEK_ORDER[w], done: done.size, complete: false };
+      }
+    }
+  }
+  return { pos: 0, day: DAY_ORDER[0], week: WEEK_ORDER[0], done: done.size, complete: true };
 }
 
 // ── State ────────────────────────────────────────────────────────
@@ -1245,11 +1266,17 @@ function renderNextUp(history) {
   if (!el) return;
   const nu = nextUp(history);
   pendingNext = nu;
-  const wk = nu.week === 'deload' ? 'Deload' : `Week ${nu.week}`;
-  const n = nu.pos + 1;
+  const wkName = w => w === 'deload' ? 'Deload' : `Week ${w}`;
   const onIt = nu.day === currentDay && String(nu.week) === String(currentWeek);
-  el.innerHTML = `Next up · session ${n} of ${SESSIONS_PER_CYCLE} — <b>${DAYS[nu.day].label}, ${wk}</b>`
-    + (onIt ? '' : ' <span style="text-decoration:underline">tap to jump</span>');
+  const progress = `${nu.done} of ${SESSIONS_PER_CYCLE} logged`;
+  if (nu.complete) {
+    el.innerHTML = `Cycle complete — all ${SESSIONS_PER_CYCLE} sessions logged. Start the next cycle in ⚙ Settings.`;
+  } else if (onIt) {
+    el.innerHTML = `Next up · <b>${DAYS[nu.day].label}, ${wkName(nu.week)}</b> · ${progress}`;
+  } else {
+    el.innerHTML = `Logging <b>${DAYS[currentDay].label}, ${wkName(currentWeek)}</b> · not yet logged: `
+      + `<b>${DAYS[nu.day].label}, ${wkName(nu.week)}</b> <span style="text-decoration:underline">tap to jump</span>`;
+  }
 }
 function jumpToNext() {
   if (!pendingNext) return;
