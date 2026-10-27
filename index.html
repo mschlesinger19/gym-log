@@ -160,6 +160,17 @@
     font-family: 'DM Sans', sans-serif; font-size: 0.72rem; text-transform: uppercase;
     letter-spacing: 0.05em; border-radius: 6px; padding: 6px 12px; cursor: pointer; flex-shrink: 0;
   }
+  .cycle-grid { margin: -6px 0 14px; font-size: 0.7rem; }
+  .cycle-grid table { border-collapse: collapse; width: 100%; }
+  .cycle-grid td, .cycle-grid th {
+    padding: 4px 2px; text-align: center; font-weight: 500;
+    color: var(--muted); border-bottom: 1px solid var(--border);
+  }
+  .cycle-grid th { font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.06em; }
+  .cycle-grid td.yes { color: var(--accent); }
+  .cycle-grid td.no { color: var(--muted2); }
+  .cycle-grid td.next { color: var(--accent2); font-weight: 700; }
+  .cycle-grid .cg-note { color: var(--muted); padding-top: 6px; font-style: italic; }
   .next-up {
     background: var(--card); border: 1px solid var(--accent2); border-radius: 10px;
     padding: 10px 14px; margin: 0 0 14px; font-size: 0.8rem; color: var(--accent2); cursor: pointer;
@@ -383,6 +394,7 @@
   </div>
   <div class="edit-banner" id="editBanner" hidden></div>
   <div class="next-up" id="nextUp" onclick="jumpToNext()"></div>
+  <div class="cycle-grid" id="cycleGrid"></div>
   <div class="day-full" id="dayFull"></div>
   <div id="exerciseArea"></div>
 </div>
@@ -401,6 +413,11 @@
   </div>
   <div class="settings-intro" id="cycleInfo"></div>
   <div class="settings-intro" id="configInfo"></div>
+  <div class="setting-card">
+    <div class="setting-row"><label>Count sessions from<span class="at-why" id="cycleStartLabel"></span></label>
+      <button class="toggle-btn" onclick="resetCycleWindow()">Count all</button>
+    </div>
+  </div>
   <div class="settings-subhead">Schedule</div>
   <div class="settings-intro">Same four days either way. On a 3-day week they roll Mon/Wed/Fri, so a cycle takes ~5 weeks — position is tracked by <b>sessions completed</b>, not the calendar.</div>
   <div class="setting-card">
@@ -914,6 +931,8 @@ async function renderExercises() {
   area.innerHTML = '';
 
   renderEditBanner();
+  renderNextUp(history);      // week changes re-render too, so the banner can't go stale
+  renderCycleGrid(history);
 
   const slots = getSlots(currentDay);
   slots.forEach(cfg => {
@@ -1247,8 +1266,7 @@ function selectDay(day) {
   document.getElementById(`pill-${day}`)?.classList.add('active');
   document.getElementById('dayFull').textContent = DAYS[day].full;
   document.getElementById('saveBtn').style.display = 'block';
-  getHistory().then(renderNextUp);
-  renderExercises();
+  renderExercises();          // renderExercises refreshes the banner
 }
 let pendingNext = null;
 function renderEditBanner() {
@@ -1278,6 +1296,31 @@ function renderNextUp(history) {
       + `<b>${DAYS[nu.day].label}, ${wkName(nu.week)}</b> <span style="text-decoration:underline">tap to jump</span>`;
   }
 }
+// Make the app's view of the cycle visible: which slots it believes are
+// logged, and the cutoff that decides what counts.
+function renderCycleGrid(history) {
+  const el = document.getElementById('cycleGrid');
+  if (!el) return;
+  const done = loggedThisCycle(history);
+  const nu = nextUp(history);
+  const head = '<tr><th></th>' + DAY_ORDER.map(d => `<th>${DAYS[d].label}</th>`).join('') + '</tr>';
+  const body = WEEK_ORDER.map(w => {
+    const cells = DAY_ORDER.map(d => {
+      const isNext = !nu.complete && nu.day === d && String(nu.week) === String(w);
+      const has = done.has(`${normWeek(w)}|${d}`);
+      return `<td class="${has ? 'yes' : isNext ? 'next' : 'no'}">${has ? '✓' : isNext ? '→' : '·'}</td>`;
+    }).join('');
+    return `<tr><th>${w === 'deload' ? 'Wk4' : 'Wk' + w}</th>${cells}</tr>`;
+  }).join('');
+  const cutoff = config.cycleStartedAt
+    ? `Counting sessions since ${fmt(config.cycleStartedAt)} (cycle ${config.cycle} start). Earlier ones are not counted.`
+    : 'Counting all logged sessions.';
+  const total = (history || []).filter(e => DAYS[e.day]).length;
+  const hidden = total - done.size;
+  el.innerHTML = `<table>${head}${body}</table>`
+    + `<div class="cg-note">${cutoff}${hidden > 0 ? ` <b>${hidden} earlier session${hidden === 1 ? '' : 's'} not counted.</b>` : ''}</div>`;
+}
+
 function jumpToNext() {
   if (!pendingNext) return;
   currentWeek = pendingNext.week;
@@ -1305,6 +1348,8 @@ function selectWeek(w) {
 function openSettings() {
   TM_FIELDS.forEach(([id, lift]) => { const el = document.getElementById(`tm-${id}`); if (el) el.value = config.tms[lift] || ''; });
   renderAssistTargetSettings();
+  const csl = document.getElementById('cycleStartLabel');
+  if (csl) csl.textContent = config.cycleStartedAt ? `currently since ${fmt(config.cycleStartedAt)}` : 'all logged sessions count';
   syncInSeasonBtn();
   syncScheduleBtn();
   const cy = document.getElementById('cycleInfo');
@@ -1340,6 +1385,15 @@ function renderAssistTargetSettings() {
       .map(e => `<div class="setting-row"><label>${e.slot}<span class="at-why">exempt · ${e.repTarget}</span></label></div>`).join('');
     return `<div class="at-day"><div class="at-day-name">${DAYS[d].full.replace(/^Day \d+ — /, '')}</div>${rows}${extras}</div>`;
   }).join('');
+}
+
+async function resetCycleWindow() {
+  config.cycleStartedAt = 0;
+  const l = document.getElementById('cycleStartLabel');
+  if (l) l.textContent = 'all logged sessions count';
+  await saveConfig({ silent: true });
+  showToast('Now counting every logged session');
+  renderExercises();
 }
 
 function syncInSeasonBtn() {
