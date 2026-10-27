@@ -931,6 +931,7 @@ async function renderExercises() {
   area.innerHTML = '';
 
   renderEditBanner();
+  renderNextUp(history);      // week changes re-render too, so the banner can't go stale
   renderCycleGrid(history);
 
   const slots = getSlots(currentDay);
@@ -1265,8 +1266,7 @@ function selectDay(day) {
   document.getElementById(`pill-${day}`)?.classList.add('active');
   document.getElementById('dayFull').textContent = DAYS[day].full;
   document.getElementById('saveBtn').style.display = 'block';
-  getHistory().then(renderNextUp);
-  renderExercises();
+  renderExercises();          // renderExercises refreshes the banner
 }
 let pendingNext = null;
 function renderEditBanner() {
